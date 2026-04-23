@@ -1,36 +1,122 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# TalentSeeker AI
 
-## Getting Started
+Suite de RH em `Next.js` para concurso, com upload de curriculos, ingestao assincrona, embeddings, busca semantica, ranking com justificativa e pipeline visual.
 
-First, run the development server:
+## Stack
+
+- `Next.js 16` + `TypeScript` + `App Router`
+- `Inngest` para jobs assincronos
+- `Vercel Blob` para arquivos
+- `Qdrant` para busca vetorial
+- `Ollama` para embeddings locais
+- `Groq` para extracao de perfil e rerank
+- `Supabase/Postgres` via `DATABASE_URL`
+
+Quando as credenciais nao estao presentes, o app entra em fallback local:
+
+- storage em memoria
+- embeddings heuristicos
+- vetores em memoria
+- extracao/rerank heuristicos
+- repositorio em memoria
+
+Isso permite desenvolver e demonstrar o fluxo sem depender das integracoes externas no primeiro momento.
+
+## Modulos entregues
+
+- `Dashboard`
+- `Vagas`
+- `Curriculos`
+- `Ranking`
+- `Pipeline`
+
+## APIs
+
+- `POST /api/resumes/upload`
+- `DELETE /api/resumes/:id`
+- `POST /api/jobs`
+- `PATCH /api/jobs/:id`
+- `DELETE /api/jobs/:id`
+- `POST /api/jobs/:id/match`
+- `GET /api/jobs/:id/matches`
+- `PATCH /api/candidates/:id/stage`
+- `GET|POST|PUT /api/inngest`
+
+## Setup
+
+1. Instale dependencias:
+
+```bash
+npm install
+```
+
+2. Crie o arquivo `.env.local` a partir de `.env.example`.
+
+3. Instale e prepare o Ollama:
+
+```bash
+ollama serve
+ollama pull embeddinggemma
+```
+
+4. Rode o projeto:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+5. Abra `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Scripts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run dev
+npm run lint
+npm run test
+npm run build
+npm run db:setup
+```
 
-## Learn More
+## Banco e migracao
 
-To learn more about Next.js, take a look at the following resources:
+- O schema SQL inicial esta em `drizzle/0000_initial.sql`
+- A configuracao do Drizzle esta em `drizzle.config.ts`
+- Em producao, aplique o schema no Postgres/Supabase antes de subir o app
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Variaveis de ambiente
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Use `.env.example` como base. As principais sao:
 
-## Deploy on Vercel
+- `DATABASE_URL`
+- `QDRANT_URL`
+- `QDRANT_API_KEY`
+- `QDRANT_COLLECTION`
+- `OLLAMA_URL`
+- `OLLAMA_EMBEDDING_MODEL`
+- `GROQ_API_KEY`
+- `GROQ_MODEL`
+- `BLOB_READ_WRITE_TOKEN`
+- `BLOB_STORE_ACCESS`
+- `INNGEST_EVENT_KEY`
+- `INNGEST_SIGNING_KEY`
+- `NEXT_PUBLIC_APP_URL`
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Fluxo principal
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. RH cria a vaga com titulo, descricao e palavras-chave.
+2. RH faz upload do curriculo em `PDF` ou `DOCX`.
+3. O app extrai texto, faz chunking, gera embeddings e indexa no vetor store.
+4. O matching busca os curriculos mais aderentes.
+5. O rerank gera nota e justificativa curta.
+6. O RH move candidatos entre `Aderente`, `Em analise` e `Selecionado`.
+
+## Testes implementados
+
+- chunking com overlap
+- score hibrido
+- fallback de rerank
+
+## Observacao de seguranca
+
+Para o demo, o Blob esta preparado com fluxo simples. Em producao, recomenda-se endurecer acesso a curriculos, usar storage privado e adicionar autenticacao/autorizacao.
+"# talentseeker" 
