@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { GuidedTour } from "@/components/guided-tour";
 import { APP_NAME, NAV_ITEMS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
@@ -13,6 +14,7 @@ type AppShellProps = {
 export function AppShell({ children }: AppShellProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const [tourSignal, setTourSignal] = useState(0);
 
   useEffect(() => {
     for (const item of NAV_ITEMS) {
@@ -42,6 +44,13 @@ export function AppShell({ children }: AppShellProps) {
               </div>
             </div>
             <nav className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setTourSignal((current) => current + 1)}
+                className="rounded-full bg-white/5 px-4 py-2 text-sm text-white/80 transition hover:bg-white/10"
+              >
+                Ver roteiro
+              </button>
               {NAV_ITEMS.map((item) => (
                 <Link
                   key={item.href}
@@ -62,6 +71,7 @@ export function AppShell({ children }: AppShellProps) {
         </header>
         <main className="flex-1">{children}</main>
       </div>
+      <GuidedTour key={tourSignal} forceOpen={tourSignal > 0} />
     </div>
   );
 }
