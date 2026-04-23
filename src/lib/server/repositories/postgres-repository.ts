@@ -97,6 +97,74 @@ type PipelineHistoryRow = Row & {
   changed_at: string | Date;
 };
 
+type ResumeBundleRow = Row & {
+  resume_id: string;
+  resume_candidate_id: string | null;
+  resume_file_name: string;
+  resume_mime_type: string;
+  resume_file_hash: string;
+  resume_storage_key: string;
+  resume_download_url: string;
+  resume_status: string;
+  resume_extracted_text: string | null;
+  resume_ingest_error: string | null;
+  resume_created_at: string | Date;
+  resume_updated_at: string | Date;
+  candidate_id: string | null;
+  candidate_full_name: string | null;
+  candidate_email: string | null;
+  candidate_skills: string[] | null;
+  candidate_years_experience: number | null;
+  candidate_current_role: string | null;
+  candidate_location: string | null;
+  candidate_summary: string | null;
+  candidate_created_at: string | Date | null;
+  candidate_updated_at: string | Date | null;
+  ingest_id: string | null;
+  ingest_resume_id: string | null;
+  ingest_status: string | null;
+  ingest_error_message: string | null;
+  ingest_created_at: string | Date | null;
+  ingest_updated_at: string | Date | null;
+};
+
+type MatchViewRow = Row & {
+  match_id: string;
+  match_job_id: string;
+  match_candidate_id: string;
+  match_resume_id: string;
+  match_overall_score: number;
+  match_semantic_score: number;
+  match_keyword_score: number;
+  match_profile_score: number;
+  match_justification: string;
+  match_stage: string;
+  match_created_at: string | Date;
+  match_updated_at: string | Date;
+  candidate_id: string;
+  candidate_full_name: string;
+  candidate_email: string | null;
+  candidate_skills: string[] | null;
+  candidate_years_experience: number | null;
+  candidate_current_role: string | null;
+  candidate_location: string | null;
+  candidate_summary: string | null;
+  candidate_created_at: string | Date;
+  candidate_updated_at: string | Date;
+  resume_id: string;
+  resume_candidate_id: string | null;
+  resume_file_name: string;
+  resume_mime_type: string;
+  resume_file_hash: string;
+  resume_storage_key: string;
+  resume_download_url: string;
+  resume_status: string;
+  resume_extracted_text: string | null;
+  resume_ingest_error: string | null;
+  resume_created_at: string | Date;
+  resume_updated_at: string | Date;
+};
+
 function iso(value: string | Date | null | undefined) {
   if (value instanceof Date) {
     return Number.isNaN(value.getTime()) ? "" : value.toISOString();
@@ -218,33 +286,144 @@ function mapHistory(row: PipelineHistoryRow): PipelineStageHistoryRecord {
   };
 }
 
+function mapResumeBundle(row: ResumeBundleRow): ResumeWithCandidate {
+  return {
+    resume: {
+      id: row.resume_id,
+      candidateId: row.resume_candidate_id,
+      fileName: row.resume_file_name,
+      mimeType: row.resume_mime_type,
+      fileHash: row.resume_file_hash,
+      storageKey: row.resume_storage_key,
+      downloadUrl: row.resume_download_url,
+      status: row.resume_status as ResumeRecord["status"],
+      extractedText: row.resume_extracted_text,
+      ingestError: row.resume_ingest_error,
+      createdAt: iso(row.resume_created_at),
+      updatedAt: iso(row.resume_updated_at),
+    },
+    candidate: row.candidate_id
+      ? {
+          id: row.candidate_id,
+          fullName: row.candidate_full_name ?? "",
+          email: row.candidate_email,
+          skills: row.candidate_skills ?? [],
+          yearsExperience: row.candidate_years_experience,
+          currentRole: row.candidate_current_role,
+          location: row.candidate_location,
+          summary: row.candidate_summary,
+          createdAt: iso(row.candidate_created_at),
+          updatedAt: iso(row.candidate_updated_at),
+        }
+      : null,
+    ingestJob: row.ingest_id
+      ? {
+          id: row.ingest_id,
+          resumeId: row.ingest_resume_id ?? row.resume_id,
+          status: row.ingest_status as IngestJobRecord["status"],
+          errorMessage: row.ingest_error_message,
+          createdAt: iso(row.ingest_created_at),
+          updatedAt: iso(row.ingest_updated_at),
+        }
+      : null,
+  };
+}
+
+function mapMatchView(row: MatchViewRow): MatchCandidateView {
+  return {
+    result: {
+      id: row.match_id,
+      jobId: row.match_job_id,
+      candidateId: row.match_candidate_id,
+      resumeId: row.match_resume_id,
+      overallScore: Number(row.match_overall_score),
+      semanticScore: Number(row.match_semantic_score),
+      keywordScore: Number(row.match_keyword_score),
+      profileScore: Number(row.match_profile_score),
+      justification: row.match_justification,
+      stage: row.match_stage as MatchCandidateView["result"]["stage"],
+      createdAt: iso(row.match_created_at),
+      updatedAt: iso(row.match_updated_at),
+    },
+    candidate: {
+      id: row.candidate_id,
+      fullName: row.candidate_full_name,
+      email: row.candidate_email,
+      skills: row.candidate_skills ?? [],
+      yearsExperience: row.candidate_years_experience,
+      currentRole: row.candidate_current_role,
+      location: row.candidate_location,
+      summary: row.candidate_summary,
+      createdAt: iso(row.candidate_created_at),
+      updatedAt: iso(row.candidate_updated_at),
+    },
+    resume: {
+      id: row.resume_id,
+      candidateId: row.resume_candidate_id,
+      fileName: row.resume_file_name,
+      mimeType: row.resume_mime_type,
+      fileHash: row.resume_file_hash,
+      storageKey: row.resume_storage_key,
+      downloadUrl: row.resume_download_url,
+      status: row.resume_status as ResumeRecord["status"],
+      extractedText: row.resume_extracted_text,
+      ingestError: row.resume_ingest_error,
+      createdAt: iso(row.resume_created_at),
+      updatedAt: iso(row.resume_updated_at),
+    },
+  };
+}
+
 async function getResumeCandidateBundle(resumeId: string): Promise<ResumeWithCandidate | null> {
   const sql = getSqlClient();
-  const [resumeRow] = await sql<ResumeRow[]>`
-    SELECT * FROM resumes WHERE id = ${resumeId} LIMIT 1
-  `;
-
-  if (!resumeRow) {
-    return null;
-  }
-
-  const [candidateRow] = resumeRow.candidate_id
-    ? await sql<CandidateRow[]>`
-        SELECT * FROM candidate_profiles WHERE id = ${resumeRow.candidate_id} LIMIT 1
-      `
-    : [undefined];
-  const [ingestRow] = await sql<IngestJobRow[]>`
-    SELECT * FROM ingest_jobs
-    WHERE resume_id = ${resumeId}
-    ORDER BY created_at DESC
+  const [row] = await sql<ResumeBundleRow[]>`
+    SELECT
+      r.id AS resume_id,
+      r.candidate_id AS resume_candidate_id,
+      r.file_name AS resume_file_name,
+      r.mime_type AS resume_mime_type,
+      r.file_hash AS resume_file_hash,
+      r.storage_key AS resume_storage_key,
+      r.download_url AS resume_download_url,
+      r.status AS resume_status,
+      r.extracted_text AS resume_extracted_text,
+      r.ingest_error AS resume_ingest_error,
+      r.created_at AS resume_created_at,
+      r.updated_at AS resume_updated_at,
+      c.id AS candidate_id,
+      c.full_name AS candidate_full_name,
+      c.email AS candidate_email,
+      c.skills AS candidate_skills,
+      c.years_experience AS candidate_years_experience,
+      c.current_role AS candidate_current_role,
+      c.location AS candidate_location,
+      c.summary AS candidate_summary,
+      c.created_at AS candidate_created_at,
+      c.updated_at AS candidate_updated_at,
+      ij.id AS ingest_id,
+      ij.resume_id AS ingest_resume_id,
+      ij.status AS ingest_status,
+      ij.error_message AS ingest_error_message,
+      ij.created_at AS ingest_created_at,
+      ij.updated_at AS ingest_updated_at
+    FROM resumes r
+    LEFT JOIN candidate_profiles c ON c.id = r.candidate_id
+    LEFT JOIN LATERAL (
+      SELECT *
+      FROM ingest_jobs
+      WHERE resume_id = r.id
+      ORDER BY created_at DESC
+      LIMIT 1
+    ) ij ON TRUE
+    WHERE r.id = ${resumeId}
     LIMIT 1
   `;
 
-  return {
-    resume: mapResume(resumeRow),
-    candidate: candidateRow ? mapCandidate(candidateRow) : null,
-    ingestJob: ingestRow ? mapIngest(ingestRow) : null,
-  };
+  if (!row) {
+    return null;
+  }
+
+  return mapResumeBundle(row);
 }
 
 export const postgresRepository: AppRepository = {
@@ -324,9 +503,48 @@ export const postgresRepository: AppRepository = {
   },
   async listResumes() {
     const sql = getSqlClient();
-    const rows = await sql<ResumeRow[]>`SELECT * FROM resumes ORDER BY created_at DESC`;
-    const bundles = await Promise.all(rows.map((row) => getResumeCandidateBundle(row.id)));
-    return bundles.filter(Boolean) as ResumeWithCandidate[];
+    const rows = await sql<ResumeBundleRow[]>`
+      SELECT
+        r.id AS resume_id,
+        r.candidate_id AS resume_candidate_id,
+        r.file_name AS resume_file_name,
+        r.mime_type AS resume_mime_type,
+        r.file_hash AS resume_file_hash,
+        r.storage_key AS resume_storage_key,
+        r.download_url AS resume_download_url,
+        r.status AS resume_status,
+        r.extracted_text AS resume_extracted_text,
+        r.ingest_error AS resume_ingest_error,
+        r.created_at AS resume_created_at,
+        r.updated_at AS resume_updated_at,
+        c.id AS candidate_id,
+        c.full_name AS candidate_full_name,
+        c.email AS candidate_email,
+        c.skills AS candidate_skills,
+        c.years_experience AS candidate_years_experience,
+        c.current_role AS candidate_current_role,
+        c.location AS candidate_location,
+        c.summary AS candidate_summary,
+        c.created_at AS candidate_created_at,
+        c.updated_at AS candidate_updated_at,
+        ij.id AS ingest_id,
+        ij.resume_id AS ingest_resume_id,
+        ij.status AS ingest_status,
+        ij.error_message AS ingest_error_message,
+        ij.created_at AS ingest_created_at,
+        ij.updated_at AS ingest_updated_at
+      FROM resumes r
+      LEFT JOIN candidate_profiles c ON c.id = r.candidate_id
+      LEFT JOIN LATERAL (
+        SELECT *
+        FROM ingest_jobs
+        WHERE resume_id = r.id
+        ORDER BY created_at DESC
+        LIMIT 1
+      ) ij ON TRUE
+      ORDER BY r.created_at DESC
+    `;
+    return rows.map(mapResumeBundle);
   },
   async getResume(id) {
     return getResumeCandidateBundle(id);
@@ -526,24 +744,49 @@ export const postgresRepository: AppRepository = {
   },
   async listMatches(jobId) {
     const sql = getSqlClient();
-    const rows = await sql<MatchRow[]>`
-      SELECT * FROM match_results
-      WHERE job_id = ${jobId}
-      ORDER BY overall_score DESC
+    const rows = await sql<MatchViewRow[]>`
+      SELECT
+        mr.id AS match_id,
+        mr.job_id AS match_job_id,
+        mr.candidate_id AS match_candidate_id,
+        mr.resume_id AS match_resume_id,
+        mr.overall_score AS match_overall_score,
+        mr.semantic_score AS match_semantic_score,
+        mr.keyword_score AS match_keyword_score,
+        mr.profile_score AS match_profile_score,
+        mr.justification AS match_justification,
+        mr.stage AS match_stage,
+        mr.created_at AS match_created_at,
+        mr.updated_at AS match_updated_at,
+        c.id AS candidate_id,
+        c.full_name AS candidate_full_name,
+        c.email AS candidate_email,
+        c.skills AS candidate_skills,
+        c.years_experience AS candidate_years_experience,
+        c.current_role AS candidate_current_role,
+        c.location AS candidate_location,
+        c.summary AS candidate_summary,
+        c.created_at AS candidate_created_at,
+        c.updated_at AS candidate_updated_at,
+        r.id AS resume_id,
+        r.candidate_id AS resume_candidate_id,
+        r.file_name AS resume_file_name,
+        r.mime_type AS resume_mime_type,
+        r.file_hash AS resume_file_hash,
+        r.storage_key AS resume_storage_key,
+        r.download_url AS resume_download_url,
+        r.status AS resume_status,
+        r.extracted_text AS resume_extracted_text,
+        r.ingest_error AS resume_ingest_error,
+        r.created_at AS resume_created_at,
+        r.updated_at AS resume_updated_at
+      FROM match_results mr
+      INNER JOIN candidate_profiles c ON c.id = mr.candidate_id
+      INNER JOIN resumes r ON r.id = mr.resume_id
+      WHERE mr.job_id = ${jobId}
+      ORDER BY mr.overall_score DESC
     `;
-    const views: MatchCandidateView[] = [];
-    for (const row of rows) {
-      const candidate = await this.getCandidate(row.candidate_id);
-      const resumeBundle = await getResumeCandidateBundle(row.resume_id);
-      if (candidate && resumeBundle) {
-        views.push({
-          result: mapMatch(row),
-          candidate,
-          resume: resumeBundle.resume,
-        });
-      }
-    }
-    return views;
+    return rows.map(mapMatchView);
   },
   async updateCandidateStage(jobId, candidateId, stage) {
     const sql = getSqlClient();
