@@ -3,12 +3,12 @@ import { ResumeLibraryActions } from "@/components/forms/resume-library-actions"
 import { UploadResumeForm } from "@/components/forms/upload-resume-form";
 import { StatusBadge } from "@/components/status-badge";
 import { Card } from "@/components/ui/card";
-import { getRepository } from "@/lib/server/repositories";
+import { listResumesCached } from "@/lib/server/cached-queries";
 
 export const dynamic = "force-dynamic";
 
 export default async function ResumesPage() {
-  const resumes = await getRepository().listResumes();
+  const resumes = await listResumesCached();
 
   return (
     <div className="grid gap-6 xl:grid-cols-[0.8fr_1.2fr]">

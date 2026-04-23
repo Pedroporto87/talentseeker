@@ -41,13 +41,28 @@ export async function listJobsCached() {
 }
 
 export async function getJobCached(jobId: string) {
+  if (!jobId) {
+    return null;
+  }
+
   return unstable_cache(async () => getRepository().getJob(jobId), ["job", jobId], {
     revalidate: CACHE_WINDOWS.jobs,
     tags: [CACHE_TAGS.jobs, `${CACHE_TAGS.jobs}:${jobId}`],
   })();
 }
 
-export async function listMatchesCached(jobId: string) {
+export async function listResumesCached() {
+  return unstable_cache(async () => getRepository().listResumes(), ["resumes-list"], {
+    revalidate: CACHE_WINDOWS.matches,
+    tags: [CACHE_TAGS.resumes],
+  })();
+}
+
+export async function listMatchesCached(jobId: string | null | undefined) {
+  if (!jobId) {
+    return [];
+  }
+
   return unstable_cache(
     async () => getRepository().listMatches(jobId),
     ["matches", jobId],
@@ -58,7 +73,11 @@ export async function listMatchesCached(jobId: string) {
   )();
 }
 
-export async function listPipelineHistoryCached(jobId: string) {
+export async function listPipelineHistoryCached(jobId: string | null | undefined) {
+  if (!jobId) {
+    return [];
+  }
+
   return unstable_cache(
     async () => getRepository().listPipelineHistory(jobId),
     ["pipeline-history", jobId],

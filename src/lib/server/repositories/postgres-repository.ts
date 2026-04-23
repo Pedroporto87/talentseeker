@@ -464,6 +464,10 @@ export const postgresRepository: AppRepository = {
     return rows.map(mapJob);
   },
   async getJob(id) {
+    if (!id) {
+      return null;
+    }
+
     const sql = getSqlClient();
     const [row] = await sql<JobRow[]>`SELECT * FROM jobs WHERE id = ${id} LIMIT 1`;
     return row ? mapJob(row) : null;
@@ -743,6 +747,10 @@ export const postgresRepository: AppRepository = {
     return this.listMatches(jobId);
   },
   async listMatches(jobId) {
+    if (!jobId) {
+      return [];
+    }
+
     const sql = getSqlClient();
     const rows = await sql<MatchViewRow[]>`
       SELECT
@@ -820,6 +828,10 @@ export const postgresRepository: AppRepository = {
     )!;
   },
   async listPipelineHistory(jobId) {
+    if (!jobId) {
+      return [];
+    }
+
     const sql = getSqlClient();
     const rows = await sql<PipelineHistoryRow[]>`
       SELECT * FROM pipeline_stage_history
