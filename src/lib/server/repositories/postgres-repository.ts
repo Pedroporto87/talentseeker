@@ -97,8 +97,32 @@ type PipelineHistoryRow = Row & {
   changed_at: string | Date;
 };
 
-function iso(value: string | Date) {
-  return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
+function iso(value: string | Date | null | undefined) {
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? "" : value.toISOString();
+  }
+
+  if (typeof value === "string") {
+    const normalized = value.trim();
+    if (!normalized) {
+      return "";
+    }
+
+    const parsed = new Date(normalized);
+    if (!Number.isNaN(parsed.getTime())) {
+      return parsed.toISOString();
+    }
+
+    console.warn("Timestamp invalido recebido do Postgres:", normalized);
+    return normalized;
+  }
+
+  if (value == null) {
+    return "";
+  }
+
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? "" : parsed.toISOString();
 }
 
 function mapCandidate(row: CandidateRow): CandidateProfile {
