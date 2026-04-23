@@ -1,0 +1,23 @@
+import postgres from "postgres";
+import { getServerEnv } from "@/lib/server/env";
+
+declare global {
+  var __resumeSqlClient: ReturnType<typeof postgres> | undefined;
+}
+
+export function getSqlClient() {
+  const { databaseUrl } = getServerEnv();
+
+  if (!databaseUrl) {
+    throw new Error("DATABASE_URL não configurado.");
+  }
+
+  if (!globalThis.__resumeSqlClient) {
+    globalThis.__resumeSqlClient = postgres(databaseUrl, {
+      prepare: false,
+      max: 1,
+    });
+  }
+
+  return globalThis.__resumeSqlClient;
+}

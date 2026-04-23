@@ -1,0 +1,13 @@
+
+> leitor-de-curriculo@0.1.0 dev
+> next dev
+
+▲ Next.js 16.2.4 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.15.27:3000
+- Environments: .env.local
+✓ Ready in 3.9s
+Creating turbopack project {
+  dir: 'C:\\Users\\Administrador\\Desktop\\leitor-de-curriculo',
+  testMode: true
+}
