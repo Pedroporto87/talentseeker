@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { DeleteJobButton } from "@/components/forms/delete-job-button";
 import { Card } from "@/components/ui/card";
 import { RunMatchButton } from "@/components/forms/run-match-button";
 import { StageSelect } from "@/components/forms/stage-select";
@@ -46,7 +47,14 @@ export default async function JobDetailPage({ params }: PageProps) {
               ))}
             </div>
           </div>
-          <RunMatchButton jobId={job.id} />
+          <div className="flex flex-wrap items-center gap-3">
+            <RunMatchButton jobId={job.id} />
+            <DeleteJobButton
+              jobId={job.id}
+              label="Excluir vaga"
+              redirectTo="/vagas"
+            />
+          </div>
         </div>
       </Card>
 

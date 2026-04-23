@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { DeleteJobButton } from "@/components/forms/delete-job-button";
 import { Card } from "@/components/ui/card";
 import { CreateJobForm } from "@/components/forms/create-job-form";
 import { listJobsCached } from "@/lib/server/cached-queries";
@@ -43,25 +44,32 @@ export default async function JobsPage() {
 
         <div className="mt-6 space-y-4">
           {jobs.map((job) => (
-            <Link
+            <div
               key={job.id}
-              href={`/vagas/${job.id}`}
-              prefetch
-              className="block rounded-[24px] border border-slate-200/80 bg-white/70 p-5 hover:border-[#163f35]/40"
+              className="rounded-[24px] border border-slate-200/80 bg-white/70 p-5"
             >
-              <h3 className="text-lg font-semibold text-[#163f35]">{job.title}</h3>
-              <p className="mt-2 text-sm text-slate-600">{job.description}</p>
-              <div className="mt-4 flex flex-wrap gap-2">
-                {job.keywords.map((keyword) => (
-                  <span
-                    key={keyword}
-                    className="rounded-full bg-[#e8f1ed] px-3 py-1 text-xs text-[#163f35]"
-                  >
-                    {keyword}
-                  </span>
-                ))}
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <Link
+                  href={`/vagas/${job.id}`}
+                  prefetch
+                  className="block flex-1 hover:text-[#0f3028]"
+                >
+                  <h3 className="text-lg font-semibold text-[#163f35]">{job.title}</h3>
+                  <p className="mt-2 text-sm text-slate-600">{job.description}</p>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {job.keywords.map((keyword) => (
+                      <span
+                        key={keyword}
+                        className="rounded-full bg-[#e8f1ed] px-3 py-1 text-xs text-[#163f35]"
+                      >
+                        {keyword}
+                      </span>
+                    ))}
+                  </div>
+                </Link>
+                <DeleteJobButton jobId={job.id} label="Excluir vaga" />
               </div>
-            </Link>
+            </div>
           ))}
 
           {jobs.length === 0 ? (
