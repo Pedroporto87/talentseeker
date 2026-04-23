@@ -1,6 +1,6 @@
 "use client";
 
-import { startTransition, useState } from "react";
+import { startTransition, useOptimistic, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PIPELINE_STAGES, type PipelineStage } from "@/lib/types";
 
@@ -20,11 +20,16 @@ export function StageSelect(props: {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedStage, setSelectedStage] = useState(props.value);
+  const [optimisticStage, setOptimisticStage] = useOptimistic<
+    PipelineStage,
+    PipelineStage
+  >(props.value, (_, nextStage) => nextStage);
 
   async function handleChange(nextStage: PipelineStage) {
-    const previousStage = selectedStage;
-    setSelectedStage(nextStage);
+    const previousStage = props.value;
+    startTransition(() => {
+      setOptimisticStage(nextStage);
+    });
     setLoading(true);
     setError(null);
 
@@ -43,7 +48,9 @@ export function StageSelect(props: {
       const data = (await response.json().catch(() => null)) as
         | { error?: string }
         | null;
-      setSelectedStage(previousStage);
+      startTransition(() => {
+        setOptimisticStage(previousStage);
+      });
       setError(data?.error ?? "Nao foi possivel atualizar a etapa.");
       setLoading(false);
       return;
@@ -58,7 +65,7 @@ export function StageSelect(props: {
   return (
     <div className="space-y-2">
       <select
-        value={loading ? selectedStage : props.value}
+        value={optimisticStage}
         disabled={loading}
         onChange={(event) => handleChange(event.target.value as PipelineStage)}
         className="rounded-full border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
