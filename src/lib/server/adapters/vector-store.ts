@@ -257,3 +257,21 @@ export async function removeResumeVectors(resumeId: string) {
     },
   });
 }
+
+export async function getResumeVectorCount() {
+  if (!isQdrantConfigured()) {
+    return getMemoryVectors().size;
+  }
+
+  const env = getServerEnv();
+  const exists = await getQdrantClient().collectionExists(env.qdrantCollection);
+  if (!exists.exists) {
+    return 0;
+  }
+
+  const result = await getQdrantClient().count(env.qdrantCollection, {
+    exact: true,
+  });
+
+  return result.count ?? 0;
+}

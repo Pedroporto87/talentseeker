@@ -4,9 +4,16 @@ import {
   createQdrantDocument,
 } from "@/lib/server/adapters/embeddings";
 import { rerankWithGroq } from "@/lib/server/adapters/llm";
-import { searchResumeVectors } from "@/lib/server/adapters/vector-store";
-import { isQdrantCloudInferenceConfigured } from "@/lib/server/env";
+import {
+  getResumeVectorCount,
+  searchResumeVectors,
+} from "@/lib/server/adapters/vector-store";
+import {
+  isQdrantCloudInferenceConfigured,
+  isQdrantConfigured,
+} from "@/lib/server/env";
 import { getRepository } from "@/lib/server/repositories";
+import { ensureResumeVectorsIndexed } from "@/lib/server/services/reindex-resume-vectors";
 import type { MatchCandidateView, PipelineStage, RankingCandidate } from "@/lib/types";
 import { uniqueStrings } from "@/lib/utils";
 
@@ -19,12 +26,21 @@ export async function runJobMatch(jobId: string): Promise<MatchCandidateView[]> 
   }
 
   const query = [job.title, job.description, job.keywords.join(" ")].join("\n");
-  const hits = await searchResumeVectors(
+  const searchQuery =
     isQdrantCloudInferenceConfigured()
       ? createQdrantDocument(query)
-      : await createEmbedding(query),
-    20,
-  );
+      : await createEmbedding(query);
+
+  let hits = await searchResumeVectors(searchQuery, 20);
+
+  if (hits.length === 0 && isQdrantConfigured()) {
+    const vectorCount = await getResumeVectorCount();
+    if (vectorCount === 0) {
+      await ensureResumeVectorsIndexed();
+      hits = await searchResumeVectors(searchQuery, 20);
+    }
+  }
+
   const grouped = new Map<
     string,
     { resumeId: string; semanticScore: number }
