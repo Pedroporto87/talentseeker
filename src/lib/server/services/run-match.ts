@@ -1,7 +1,11 @@
 import { buildEvidence, calculateHybridScore } from "@/lib/matching";
-import { createEmbedding } from "@/lib/server/adapters/embeddings";
+import {
+  createEmbedding,
+  createQdrantDocument,
+} from "@/lib/server/adapters/embeddings";
 import { rerankWithGroq } from "@/lib/server/adapters/llm";
 import { searchResumeVectors } from "@/lib/server/adapters/vector-store";
+import { isQdrantCloudInferenceConfigured } from "@/lib/server/env";
 import { getRepository } from "@/lib/server/repositories";
 import type { MatchCandidateView, PipelineStage, RankingCandidate } from "@/lib/types";
 import { uniqueStrings } from "@/lib/utils";
@@ -15,8 +19,12 @@ export async function runJobMatch(jobId: string): Promise<MatchCandidateView[]> 
   }
 
   const query = [job.title, job.description, job.keywords.join(" ")].join("\n");
-  const embedding = await createEmbedding(query);
-  const hits = await searchResumeVectors(embedding, 20);
+  const hits = await searchResumeVectors(
+    isQdrantCloudInferenceConfigured()
+      ? createQdrantDocument(query)
+      : await createEmbedding(query),
+    20,
+  );
   const grouped = new Map<
     string,
     { resumeId: string; semanticScore: number }

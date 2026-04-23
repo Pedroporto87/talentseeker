@@ -1,4 +1,8 @@
-import { getServerEnv, isOllamaConfigured } from "@/lib/server/env";
+import {
+  getServerEnv,
+  isOllamaConfigured,
+  isQdrantCloudInferenceConfigured,
+} from "@/lib/server/env";
 
 function tokenize(text: string) {
   return text
@@ -53,6 +57,10 @@ async function createOllamaEmbedding(text: string) {
 }
 
 export async function createEmbedding(text: string) {
+  if (isQdrantCloudInferenceConfigured()) {
+    return pseudoEmbed(text);
+  }
+
   if (!isOllamaConfigured()) {
     return pseudoEmbed(text);
   }
@@ -67,4 +75,13 @@ export async function createEmbedding(text: string) {
     );
     return pseudoEmbed(text);
   }
+}
+
+export function createQdrantDocument(text: string) {
+  const env = getServerEnv();
+
+  return {
+    text,
+    model: env.qdrantEmbeddingModel,
+  };
 }

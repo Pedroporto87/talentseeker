@@ -1,12 +1,22 @@
 import { QdrantClient } from "@qdrant/js-client-rest";
 import type { SearchHit } from "@/lib/types";
-import { getServerEnv, isQdrantConfigured } from "@/lib/server/env";
+import {
+  getServerEnv,
+  isQdrantCloudInferenceConfigured,
+  isQdrantConfigured,
+} from "@/lib/server/env";
 
 type UpsertVectorInput = {
   id: string;
-  vector: number[];
+  vector: number[] | { text: string; model: string };
   payload: SearchHit["payload"];
 };
+
+function isQdrantDocumentVector(
+  vector: UpsertVectorInput["vector"] | number[] | { text: string; model: string },
+): vector is { text: string; model: string } {
+  return !Array.isArray(vector);
+}
 
 declare global {
   var __resumeQdrantClient: QdrantClient | undefined;
@@ -142,7 +152,12 @@ export async function upsertResumeVectors(points: UpsertVectorInput[]) {
   }
 
   const env = getServerEnv();
-  await ensureCollection(points[0].vector.length);
+  const firstVector = points[0].vector;
+  const vectorSize = isQdrantDocumentVector(firstVector)
+    ? env.qdrantVectorSize
+    : firstVector.length;
+
+  await ensureCollection(vectorSize);
   await ensurePayloadIndexes();
   await getQdrantClient().upsert(env.qdrantCollection, {
     wait: true,
@@ -154,12 +169,21 @@ export async function upsertResumeVectors(points: UpsertVectorInput[]) {
   });
 }
 
-export async function searchResumeVectors(vector: number[], limit = 20) {
+export async function searchResumeVectors(
+  vectorOrDocument: number[] | { text: string; model: string },
+  limit = 20,
+) {
   if (!isQdrantConfigured()) {
+    if (!Array.isArray(vectorOrDocument)) {
+      throw new Error(
+        "Busca textual com Qdrant Cloud Inference exige um cluster Qdrant configurado.",
+      );
+    }
+
     return [...getMemoryVectors().values()]
       .map((point) => ({
         id: point.id,
-        score: cosineSimilarity(vector, point.vector),
+        score: cosineSimilarity(vectorOrDocument, point.vector as number[]),
         payload: point.payload,
       }))
       .sort((left, right) => right.score - left.score)
@@ -167,15 +191,28 @@ export async function searchResumeVectors(vector: number[], limit = 20) {
   }
 
   const env = getServerEnv();
-  await ensureCollection(vector.length);
+  const vectorSize = isQdrantDocumentVector(vectorOrDocument)
+    ? env.qdrantVectorSize
+    : vectorOrDocument.length;
+  await ensureCollection(vectorSize);
   await ensurePayloadIndexes();
-  const response = await getQdrantClient().search(env.qdrantCollection, {
-    vector,
-    limit,
-    with_payload: true,
-  });
+  const response =
+    isQdrantCloudInferenceConfigured() &&
+    isQdrantDocumentVector(vectorOrDocument)
+      ? await getQdrantClient().query(env.qdrantCollection, {
+          query: vectorOrDocument,
+          limit,
+          with_payload: true,
+        })
+      : await getQdrantClient().search(env.qdrantCollection, {
+          vector: vectorOrDocument as number[],
+          limit,
+          with_payload: true,
+        });
 
-  return response.map((item) => ({
+  const points = Array.isArray(response) ? response : response.points;
+
+  return points.map((item) => ({
     id: String(item.id),
     score: item.score,
     payload: {

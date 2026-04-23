@@ -7,8 +7,7 @@ Suite de RH em `Next.js` para concurso, com upload de curriculos, ingestao assin
 - `Next.js 16` + `TypeScript` + `App Router`
 - `Inngest` para jobs assincronos
 - `Vercel Blob` para arquivos
-- `Qdrant` para busca vetorial
-- `Ollama` para embeddings locais
+- `Qdrant Cloud` para embeddings e busca vetorial
 - `Groq` para extracao de perfil e rerank
 - `Supabase/Postgres` via `DATABASE_URL`
 
@@ -52,20 +51,13 @@ npm install
 
 2. Crie o arquivo `.env.local` a partir de `.env.example`.
 
-3. Instale e prepare o Ollama:
-
-```bash
-ollama serve
-ollama pull embeddinggemma
-```
-
-4. Rode o projeto:
+3. Rode o projeto:
 
 ```bash
 npm run dev
 ```
 
-5. Abra `http://localhost:3000`.
+4. Abra `http://localhost:3000`.
 
 ## Scripts
 
@@ -91,8 +83,8 @@ Use `.env.example` como base. As principais sao:
 - `QDRANT_URL`
 - `QDRANT_API_KEY`
 - `QDRANT_COLLECTION`
-- `OLLAMA_URL`
-- `OLLAMA_EMBEDDING_MODEL`
+- `QDRANT_EMBEDDING_MODEL`
+- `QDRANT_VECTOR_SIZE`
 - `GROQ_API_KEY`
 - `GROQ_MODEL`
 - `BLOB_READ_WRITE_TOKEN`
@@ -105,10 +97,10 @@ Use `.env.example` como base. As principais sao:
 
 1. RH cria a vaga com titulo, descricao e palavras-chave.
 2. RH faz upload do curriculo em `PDF` ou `DOCX`.
-3. O app extrai texto, faz chunking, gera embeddings e indexa no vetor store.
+3. O app extrai texto, faz chunking e indexa os blocos com `Qdrant Cloud Inference`.
 4. O matching busca os curriculos mais aderentes.
 5. O rerank gera nota e justificativa curta.
-6. O RH move candidatos entre `Aderente`, `Em analise` e `Selecionado`.
+6. O RH move candidatos entre `Aderente`, `Triagem`, `Entrevista inicial`, `Entrevista tecnica` e `Contratado`.
 
 ## Testes implementados
 
@@ -119,4 +111,3 @@ Use `.env.example` como base. As principais sao:
 ## Observacao de seguranca
 
 Para o demo, o Blob esta preparado com fluxo simples. Em producao, recomenda-se endurecer acesso a curriculos, usar storage privado e adicionar autenticacao/autorizacao.
-"# talentseeker" 

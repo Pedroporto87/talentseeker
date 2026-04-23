@@ -10,6 +10,10 @@ export function getServerEnv() {
     qdrantApiKey: process.env.QDRANT_API_KEY ?? "",
     qdrantCollection:
       process.env.QDRANT_COLLECTION ?? DEFAULT_QDRANT_COLLECTION,
+    qdrantEmbeddingModel:
+      process.env.QDRANT_EMBEDDING_MODEL ??
+      "sentence-transformers/all-MiniLM-L6-v2",
+    qdrantVectorSize: Number(process.env.QDRANT_VECTOR_SIZE ?? "384"),
     ollamaUrl: process.env.OLLAMA_URL ?? "",
     ollamaEmbeddingModel:
       process.env.OLLAMA_EMBEDDING_MODEL ?? "embeddinggemma",
@@ -29,6 +33,11 @@ export function isDatabaseConfigured() {
 
 export function isQdrantConfigured() {
   return Boolean(getServerEnv().qdrantUrl);
+}
+
+export function isQdrantCloudInferenceConfigured() {
+  const env = getServerEnv();
+  return Boolean(env.qdrantUrl && env.qdrantEmbeddingModel);
 }
 
 export function isOllamaConfigured() {

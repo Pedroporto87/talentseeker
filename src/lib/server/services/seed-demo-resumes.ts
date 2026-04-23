@@ -1,7 +1,11 @@
 import { chunkText } from "@/lib/chunking";
-import { createEmbedding } from "@/lib/server/adapters/embeddings";
+import {
+  createEmbedding,
+  createQdrantDocument,
+} from "@/lib/server/adapters/embeddings";
 import { createFileHash, storeResumeFile } from "@/lib/server/adapters/storage";
 import { upsertResumeVectors } from "@/lib/server/adapters/vector-store";
+import { isQdrantCloudInferenceConfigured } from "@/lib/server/env";
 import { getRepository } from "@/lib/server/repositories";
 import { clearResumeLibrary } from "@/lib/server/services/delete-resume";
 
@@ -313,10 +317,11 @@ export async function seedDemoResumes(options?: { replaceExisting?: boolean }) {
     const embeddedChunks = [];
 
     for (const chunk of storedChunks) {
-      const embedding = await createEmbedding(chunk.content);
       embeddedChunks.push({
         id: chunk.id,
-        vector: embedding,
+        vector: isQdrantCloudInferenceConfigured()
+          ? createQdrantDocument(chunk.content)
+          : await createEmbedding(chunk.content),
         payload: {
           resumeId: created.resume.id,
           candidateId: candidate.id,
