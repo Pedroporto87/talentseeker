@@ -19,10 +19,16 @@ export function StageSelect(props: {
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedStage, setSelectedStage] = useState(props.value);
 
   async function handleChange(nextStage: PipelineStage) {
+    const previousStage = selectedStage;
+    setSelectedStage(nextStage);
     setLoading(true);
-    await fetch(`/api/candidates/${props.candidateId}/stage`, {
+    setError(null);
+
+    const response = await fetch(`/api/candidates/${props.candidateId}/stage`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
@@ -33,6 +39,16 @@ export function StageSelect(props: {
       }),
     });
 
+    if (!response.ok) {
+      const data = (await response.json().catch(() => null)) as
+        | { error?: string }
+        | null;
+      setSelectedStage(previousStage);
+      setError(data?.error ?? "Nao foi possivel atualizar a etapa.");
+      setLoading(false);
+      return;
+    }
+
     startTransition(() => {
       router.refresh();
     });
@@ -40,17 +56,20 @@ export function StageSelect(props: {
   }
 
   return (
-    <select
-      value={props.value}
-      disabled={loading}
-      onChange={(event) => handleChange(event.target.value as PipelineStage)}
-      className="rounded-full border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
-    >
-      {PIPELINE_STAGES.map((stage) => (
-        <option key={stage} value={stage}>
-          {stageLabel[stage]}
-        </option>
-      ))}
-    </select>
+    <div className="space-y-2">
+      <select
+        value={loading ? selectedStage : props.value}
+        disabled={loading}
+        onChange={(event) => handleChange(event.target.value as PipelineStage)}
+        className="rounded-full border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+      >
+        {PIPELINE_STAGES.map((stage) => (
+          <option key={stage} value={stage}>
+            {stageLabel[stage]}
+          </option>
+        ))}
+      </select>
+      {error ? <p className="text-xs text-rose-700">{error}</p> : null}
+    </div>
   );
 }

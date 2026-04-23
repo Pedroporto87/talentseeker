@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { CACHE_TAGS, invalidateTags } from "@/lib/server/cached-queries";
 import { getRepository } from "@/lib/server/repositories";
 import { updateStageSchema } from "@/lib/validation";
 
@@ -18,17 +19,25 @@ export async function PATCH(request: Request, context: RouteContext) {
 
     if (!updated) {
       return NextResponse.json(
-        { error: "Candidato não encontrado no pipeline." },
+        { error: "Candidato nao encontrado no pipeline." },
         { status: 404 },
       );
     }
+
+    invalidateTags([
+      CACHE_TAGS.dashboard,
+      CACHE_TAGS.matches,
+      CACHE_TAGS.pipelineHistory,
+      `${CACHE_TAGS.matches}:${parsed.jobId}`,
+      `${CACHE_TAGS.pipelineHistory}:${parsed.jobId}`,
+    ]);
 
     return NextResponse.json(updated);
   } catch (error) {
     return NextResponse.json(
       {
         error:
-          error instanceof Error ? error.message : "Falha ao atualizar estágio.",
+          error instanceof Error ? error.message : "Falha ao atualizar estagio.",
       },
       { status: 400 },
     );

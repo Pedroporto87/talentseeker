@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, type ReactNode } from "react";
 import { APP_NAME, NAV_ITEMS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
@@ -12,6 +12,15 @@ type AppShellProps = {
 
 export function AppShell({ children }: AppShellProps) {
   const pathname = usePathname();
+  const router = useRouter();
+
+  useEffect(() => {
+    for (const item of NAV_ITEMS) {
+      if (item.href !== pathname) {
+        router.prefetch(item.href);
+      }
+    }
+  }, [pathname, router]);
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(255,255,255,0.92),_transparent_30%),linear-gradient(135deg,#f2eadf_0%,#d8e5df_42%,#9ac4b7_100%)]">
@@ -37,6 +46,7 @@ export function AppShell({ children }: AppShellProps) {
                 <Link
                   key={item.href}
                   href={item.href}
+                  prefetch
                   className={cn(
                     "rounded-full px-4 py-2 text-sm transition hover:bg-white/10",
                     pathname === item.href

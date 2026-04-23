@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { CACHE_TAGS, invalidateTags } from "@/lib/server/cached-queries";
 import { clearResumeLibrary } from "@/lib/server/services/delete-resume";
 
 export async function DELETE(request: Request) {
@@ -6,6 +7,13 @@ export async function DELETE(request: Request) {
     const { searchParams } = new URL(request.url);
     const scope = searchParams.get("scope") === "all" ? "all" : "attempts";
     const result = await clearResumeLibrary(scope);
+
+    invalidateTags([
+      CACHE_TAGS.dashboard,
+      CACHE_TAGS.resumes,
+      CACHE_TAGS.matches,
+      CACHE_TAGS.pipelineHistory,
+    ]);
 
     return NextResponse.json(result);
   } catch (error) {

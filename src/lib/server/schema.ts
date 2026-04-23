@@ -50,6 +50,7 @@ export const resumes = pgTable(
   (table) => ({
     fileHashIdx: index("resumes_file_hash_idx").on(table.fileHash),
     candidateIdx: index("resumes_candidate_id_idx").on(table.candidateId),
+    createdAtIdx: index("resumes_created_at_idx").on(table.createdAt),
   }),
 );
 
@@ -70,14 +71,20 @@ export const resumeChunks = pgTable(
   }),
 );
 
-export const jobs = pgTable("jobs", {
-  id: uuid("id").primaryKey(),
-  title: text("title").notNull(),
-  description: text("description").notNull(),
-  keywords: jsonb("keywords").$type<string[]>().notNull().default([]),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
-});
+export const jobs = pgTable(
+  "jobs",
+  {
+    id: uuid("id").primaryKey(),
+    title: text("title").notNull(),
+    description: text("description").notNull(),
+    keywords: jsonb("keywords").$type<string[]>().notNull().default([]),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+  },
+  (table) => ({
+    createdAtIdx: index("jobs_created_at_idx").on(table.createdAt),
+  }),
+);
 
 export const ingestJobs = pgTable(
   "ingest_jobs",
@@ -120,6 +127,10 @@ export const matchResults = pgTable(
   },
   (table) => ({
     jobIdx: index("match_results_job_id_idx").on(table.jobId),
+    jobScoreIdx: index("match_results_job_score_idx").on(
+      table.jobId,
+      table.overallScore,
+    ),
   }),
 );
 
@@ -139,5 +150,9 @@ export const pipelineStageHistory = pgTable(
   },
   (table) => ({
     jobIdx: index("pipeline_stage_history_job_id_idx").on(table.jobId),
+    jobChangedAtIdx: index("pipeline_stage_history_job_changed_at_idx").on(
+      table.jobId,
+      table.changedAt,
+    ),
   }),
 );

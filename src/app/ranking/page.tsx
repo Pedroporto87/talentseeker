@@ -1,21 +1,21 @@
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { ScorePill } from "@/components/score-pill";
-import { getRepository } from "@/lib/server/repositories";
-
-export const dynamic = "force-dynamic";
+import {
+  listJobsCached,
+  listMatchesCached,
+} from "@/lib/server/cached-queries";
 
 type RankingPageProps = {
   searchParams: Promise<{ jobId?: string }>;
 };
 
 export default async function RankingPage({ searchParams }: RankingPageProps) {
-  const repository = getRepository();
   const params = await searchParams;
-  const jobs = await repository.listJobs();
+  const jobs = await listJobsCached();
   const currentJob =
     jobs.find((job) => job.id === params.jobId) ?? jobs[0] ?? null;
-  const matches = currentJob ? await repository.listMatches(currentJob.id) : [];
+  const matches = currentJob ? await listMatchesCached(currentJob.id) : [];
 
   return (
     <Card>
@@ -35,6 +35,7 @@ export default async function RankingPage({ searchParams }: RankingPageProps) {
         {currentJob ? (
           <Link
             href={`/vagas/${currentJob.id}`}
+            prefetch
             className="rounded-full bg-[#163f35] px-4 py-2 text-sm font-semibold text-white"
           >
             Abrir detalhes da vaga
@@ -48,6 +49,7 @@ export default async function RankingPage({ searchParams }: RankingPageProps) {
             <Link
               key={job.id}
               href={`/ranking?jobId=${job.id}`}
+              prefetch
               className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
                 currentJob?.id === job.id
                   ? "bg-[#f08a24] text-[#1d2b23]"

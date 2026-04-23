@@ -7,15 +7,15 @@ import {
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { StatCard } from "@/components/stat-card";
-import { getRepository } from "@/lib/server/repositories";
-
-export const dynamic = "force-dynamic";
+import {
+  getDashboardSnapshotCached,
+  listJobsCached,
+} from "@/lib/server/cached-queries";
 
 export default async function Home() {
-  const repository = getRepository();
   const [dashboard, jobs] = await Promise.all([
-    repository.getDashboardSnapshot(),
-    repository.listJobs(),
+    getDashboardSnapshotCached(),
+    listJobsCached(),
   ]);
 
   const totalInPipeline = Object.values(dashboard.candidatesByStage).reduce(
@@ -80,6 +80,7 @@ export default async function Home() {
               <Link
                 key={job.id}
                 href={`/vagas/${job.id}`}
+                prefetch
                 className="rounded-[24px] border border-slate-200/80 bg-white/70 p-5 hover:border-[#163f35]/40"
               >
                 <p className="text-xs uppercase tracking-[0.22em] text-slate-500">
@@ -106,7 +107,7 @@ export default async function Home() {
             {jobs.length === 0 ? (
               <div className="rounded-[24px] border border-dashed border-slate-300 bg-white/55 p-6 text-sm text-slate-600">
                 Nenhuma vaga cadastrada ainda. Comece por{" "}
-                <Link href="/vagas" className="font-semibold text-[#163f35]">
+                <Link href="/vagas" prefetch className="font-semibold text-[#163f35]">
                   criar a primeira vaga
                 </Link>
                 .
@@ -151,6 +152,7 @@ export default async function Home() {
           </div>
           <Link
             href="/pipeline"
+            prefetch
             className="mt-6 inline-flex rounded-full bg-[#f08a24] px-4 py-2 text-sm font-semibold text-[#1d2b23]"
           >
             Abrir pipeline

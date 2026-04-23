@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { CACHE_TAGS, invalidateTags } from "@/lib/server/cached-queries";
 import { deleteResumeAndAssets } from "@/lib/server/services/delete-resume";
 
 type RouteContext = {
@@ -16,5 +17,11 @@ export async function DELETE(_: Request, context: RouteContext) {
     );
   }
 
+  invalidateTags([
+    CACHE_TAGS.dashboard,
+    CACHE_TAGS.resumes,
+    CACHE_TAGS.matches,
+    CACHE_TAGS.pipelineHistory,
+  ]);
   return NextResponse.json({ ok: true });
 }

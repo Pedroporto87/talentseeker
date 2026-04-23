@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { ACCEPTED_RESUME_TYPES } from "@/lib/constants";
+import { CACHE_TAGS, invalidateTags } from "@/lib/server/cached-queries";
 import { createFileHash, storeResumeFile } from "@/lib/server/adapters/storage";
 import { shouldUseInngestCloud } from "@/lib/server/env";
 import { inngest } from "@/lib/server/inngest";
@@ -29,7 +30,7 @@ export async function POST(request: Request) {
 
     if (!byMime && !byExtension) {
       return NextResponse.json(
-        { error: "Formato inválido. Use apenas PDF com texto ou DOCX." },
+        { error: "Formato invalido. Use apenas PDF com texto ou DOCX." },
         { status: 400 },
       );
     }
@@ -59,16 +60,17 @@ export async function POST(request: Request) {
       });
     } else {
       void ingestResume(created.resume.id).catch((error) => {
-        console.error("Erro no processamento local do currículo", error);
+        console.error("Erro no processamento local do curriculo", error);
       });
     }
 
+    invalidateTags([CACHE_TAGS.dashboard, CACHE_TAGS.resumes]);
     return NextResponse.json(created, { status: 201 });
   } catch (error) {
     return NextResponse.json(
       {
         error:
-          error instanceof Error ? error.message : "Falha ao receber currículo.",
+          error instanceof Error ? error.message : "Falha ao receber curriculo.",
       },
       { status: 500 },
     );

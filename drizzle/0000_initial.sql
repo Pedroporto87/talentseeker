@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS resumes (
 
 CREATE INDEX IF NOT EXISTS resumes_file_hash_idx ON resumes (file_hash);
 CREATE INDEX IF NOT EXISTS resumes_candidate_id_idx ON resumes (candidate_id);
+CREATE INDEX IF NOT EXISTS resumes_created_at_idx ON resumes (created_at);
 
 CREATE TABLE IF NOT EXISTS resume_chunks (
   id UUID PRIMARY KEY,
@@ -52,6 +53,8 @@ CREATE TABLE IF NOT EXISTS jobs (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+CREATE INDEX IF NOT EXISTS jobs_created_at_idx ON jobs (created_at);
 
 CREATE TABLE IF NOT EXISTS ingest_jobs (
   id UUID PRIMARY KEY,
@@ -81,6 +84,8 @@ CREATE TABLE IF NOT EXISTS match_results (
 );
 
 CREATE INDEX IF NOT EXISTS match_results_job_id_idx ON match_results (job_id);
+CREATE INDEX IF NOT EXISTS match_results_job_score_idx
+  ON match_results (job_id, overall_score DESC);
 
 CREATE TABLE IF NOT EXISTS pipeline_stage_history (
   id UUID PRIMARY KEY,
@@ -93,3 +98,5 @@ CREATE TABLE IF NOT EXISTS pipeline_stage_history (
 
 CREATE INDEX IF NOT EXISTS pipeline_stage_history_job_id_idx
   ON pipeline_stage_history (job_id);
+CREATE INDEX IF NOT EXISTS pipeline_stage_history_job_changed_at_idx
+  ON pipeline_stage_history (job_id, changed_at DESC);

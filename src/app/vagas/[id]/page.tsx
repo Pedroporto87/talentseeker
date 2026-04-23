@@ -3,9 +3,11 @@ import { Card } from "@/components/ui/card";
 import { RunMatchButton } from "@/components/forms/run-match-button";
 import { StageSelect } from "@/components/forms/stage-select";
 import { ScorePill } from "@/components/score-pill";
-import { getRepository } from "@/lib/server/repositories";
-
-export const dynamic = "force-dynamic";
+import {
+  getJobCached,
+  listMatchesCached,
+  listPipelineHistoryCached,
+} from "@/lib/server/cached-queries";
 
 type PageProps = {
   params: Promise<{ id: string }>;
@@ -13,11 +15,10 @@ type PageProps = {
 
 export default async function JobDetailPage({ params }: PageProps) {
   const { id } = await params;
-  const repository = getRepository();
   const [job, matches, history] = await Promise.all([
-    repository.getJob(id),
-    repository.listMatches(id),
-    repository.listPipelineHistory(id),
+    getJobCached(id),
+    listMatchesCached(id),
+    listPipelineHistoryCached(id),
   ]);
 
   if (!job) {

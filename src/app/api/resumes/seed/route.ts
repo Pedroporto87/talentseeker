@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { CACHE_TAGS, invalidateTags } from "@/lib/server/cached-queries";
 import { seedDemoResumes } from "@/lib/server/services/seed-demo-resumes";
 
 export async function POST() {
@@ -6,6 +7,14 @@ export async function POST() {
     const result = await seedDemoResumes({
       replaceExisting: true,
     });
+
+    invalidateTags([
+      CACHE_TAGS.dashboard,
+      CACHE_TAGS.jobs,
+      CACHE_TAGS.resumes,
+      CACHE_TAGS.matches,
+      CACHE_TAGS.pipelineHistory,
+    ]);
 
     return NextResponse.json(result, { status: 201 });
   } catch (error) {

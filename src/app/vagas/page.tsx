@@ -1,12 +1,10 @@
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { CreateJobForm } from "@/components/forms/create-job-form";
-import { getRepository } from "@/lib/server/repositories";
-
-export const dynamic = "force-dynamic";
+import { listJobsCached } from "@/lib/server/cached-queries";
 
 export default async function JobsPage() {
-  const jobs = await getRepository().listJobs();
+  const jobs = await listJobsCached();
 
   return (
     <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
@@ -46,6 +44,7 @@ export default async function JobsPage() {
             <Link
               key={job.id}
               href={`/vagas/${job.id}`}
+              prefetch
               className="block rounded-[24px] border border-slate-200/80 bg-white/70 p-5 hover:border-[#163f35]/40"
             >
               <h3 className="text-lg font-semibold text-[#163f35]">{job.title}</h3>

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { jobInputSchema } from "@/lib/validation";
+import { CACHE_TAGS, invalidateTags } from "@/lib/server/cached-queries";
 import { getRepository } from "@/lib/server/repositories";
+import { jobInputSchema } from "@/lib/validation";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -13,15 +14,23 @@ export async function PATCH(request: Request, context: RouteContext) {
     const updated = await getRepository().updateJob(id, parsed);
 
     if (!updated) {
-      return NextResponse.json({ error: "Vaga não encontrada." }, { status: 404 });
+      return NextResponse.json({ error: "Vaga nao encontrada." }, { status: 404 });
     }
+
+    invalidateTags([
+      CACHE_TAGS.dashboard,
+      CACHE_TAGS.jobs,
+      `${CACHE_TAGS.jobs}:${id}`,
+    ]);
 
     return NextResponse.json(updated);
   } catch (error) {
     return NextResponse.json(
       {
         error:
-          error instanceof Error ? error.message : "Não foi possível atualizar a vaga.",
+          error instanceof Error
+            ? error.message
+            : "Nao foi possivel atualizar a vaga.",
       },
       { status: 400 },
     );
@@ -31,5 +40,14 @@ export async function PATCH(request: Request, context: RouteContext) {
 export async function DELETE(_: Request, context: RouteContext) {
   const { id } = await context.params;
   await getRepository().deleteJob(id);
+  invalidateTags([
+    CACHE_TAGS.dashboard,
+    CACHE_TAGS.jobs,
+    CACHE_TAGS.matches,
+    CACHE_TAGS.pipelineHistory,
+    `${CACHE_TAGS.jobs}:${id}`,
+    `${CACHE_TAGS.matches}:${id}`,
+    `${CACHE_TAGS.pipelineHistory}:${id}`,
+  ]);
   return NextResponse.json({ ok: true });
 }
