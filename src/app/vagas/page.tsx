@@ -3,6 +3,8 @@ import { Card } from "@/components/ui/card";
 import { CreateJobForm } from "@/components/forms/create-job-form";
 import { listJobsCached } from "@/lib/server/cached-queries";
 
+export const dynamic = "force-dynamic";
+
 export default async function JobsPage() {
   const jobs = await listJobsCached();
 

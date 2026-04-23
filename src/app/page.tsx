@@ -12,6 +12,8 @@ import {
   listJobsCached,
 } from "@/lib/server/cached-queries";
 
+export const dynamic = "force-dynamic";
+
 export default async function Home() {
   const [dashboard, jobs] = await Promise.all([
     getDashboardSnapshotCached(),
