@@ -2,16 +2,16 @@ import { NextResponse } from "next/server";
 import { ACCEPTED_RESUME_TYPES } from "@/lib/constants";
 import { CACHE_TAGS, invalidateTags } from "@/lib/server/cached-queries";
 import { createFileHash, storeResumeFile } from "@/lib/server/adapters/storage";
-import { shouldUseInngestCloud } from "@/lib/server/env";
-import { inngest } from "@/lib/server/inngest";
 import { getRepository } from "@/lib/server/repositories";
 import { ingestResume } from "@/lib/server/services/ingest-resume";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 export async function POST(request: Request) {
+  let createdResumeId: string | null = null;
+
   try {
-    const requestUrl = new URL(request.url);
     const formData = await request.formData();
     const file = formData.get("file");
 
@@ -51,26 +51,44 @@ export async function POST(request: Request) {
       storageKey: storedFile.storageKey,
       downloadUrl: storedFile.downloadUrl,
     });
+    createdResumeId = created.resume.id;
 
-    if (shouldUseInngestCloud(requestUrl.hostname)) {
-      await inngest.send({
-        name: "resume/uploaded",
-        data: {
-          resumeId: created.resume.id,
-        },
-      });
-    } else {
-      await ingestResume(created.resume.id);
-    }
+    console.log("[api/resumes/upload] created", {
+      resumeId: created.resume.id,
+      fileName: file.name,
+    });
+
+    await ingestResume(created.resume.id);
 
     invalidateTags([CACHE_TAGS.dashboard, CACHE_TAGS.resumes]);
     const refreshed = await repository.getResume(created.resume.id);
+
+    console.log("[api/resumes/upload] completed", {
+      resumeId: created.resume.id,
+      status: refreshed?.resume.status ?? created.resume.status,
+    });
+
     return NextResponse.json(refreshed ?? created, { status: 201 });
   } catch (error) {
+    const repository = getRepository();
+    const refreshed = createdResumeId
+      ? await repository.getResume(createdResumeId).catch(() => null)
+      : null;
+
+    if (createdResumeId) {
+      invalidateTags([CACHE_TAGS.dashboard, CACHE_TAGS.resumes]);
+    }
+
+    console.error("[api/resumes/upload] failed", {
+      resumeId: createdResumeId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+
     return NextResponse.json(
       {
         error:
           error instanceof Error ? error.message : "Falha ao receber curriculo.",
+        resume: refreshed?.resume ?? null,
       },
       { status: 500 },
     );

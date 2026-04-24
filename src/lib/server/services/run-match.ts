@@ -13,11 +13,39 @@ import {
   isQdrantConfigured,
 } from "@/lib/server/env";
 import { getRepository } from "@/lib/server/repositories";
+import { ingestResume } from "@/lib/server/services/ingest-resume";
 import { ensureResumeVectorsIndexed } from "@/lib/server/services/reindex-resume-vectors";
 import type { MatchCandidateView, PipelineStage, RankingCandidate } from "@/lib/types";
 import { uniqueStrings } from "@/lib/utils";
 
 export class MatchValidationError extends Error {}
+
+async function processPendingResumes() {
+  const repository = getRepository();
+  const resumes = await repository.listResumes();
+  const pending = resumes
+    .filter((item) =>
+      item.resume.status === "uploaded" || item.resume.status === "parsing",
+    )
+    .slice(0, 3);
+
+  for (const item of pending) {
+    try {
+      console.log("[run-match] ingesting pending resume", {
+        resumeId: item.resume.id,
+        fileName: item.resume.fileName,
+      });
+      await ingestResume(item.resume.id);
+    } catch (error) {
+      console.error("[run-match] pending resume ingest failed", {
+        resumeId: item.resume.id,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  return repository.listResumes();
+}
 
 export async function runJobMatch(jobId: string): Promise<MatchCandidateView[]> {
   const repository = getRepository();
@@ -27,7 +55,7 @@ export async function runJobMatch(jobId: string): Promise<MatchCandidateView[]> 
     throw new MatchValidationError("Vaga nao encontrada.");
   }
 
-  const resumes = await repository.listResumes();
+  const resumes = await processPendingResumes();
   const hasIndexedResume = resumes.some((item) => item.resume.status === "indexed");
 
   if (!hasIndexedResume) {
@@ -41,6 +69,11 @@ export async function runJobMatch(jobId: string): Promise<MatchCandidateView[]> 
     ? createQdrantDocument(query)
     : await createEmbedding(query);
 
+  console.log("[run-match] searching vectors", {
+    jobId,
+    indexedResumes: resumes.filter((item) => item.resume.status === "indexed").length,
+  });
+
   let hits = await searchResumeVectors(searchQuery, 20);
 
   if (hits.length === 0 && isQdrantConfigured()) {
@@ -50,6 +83,11 @@ export async function runJobMatch(jobId: string): Promise<MatchCandidateView[]> 
       hits = await searchResumeVectors(searchQuery, 20);
     }
   }
+
+  console.log("[run-match] vector search completed", {
+    jobId,
+    hits: hits.length,
+  });
 
   const grouped = new Map<string, { resumeId: string; semanticScore: number }>();
 
@@ -106,6 +144,11 @@ export async function runJobMatch(jobId: string): Promise<MatchCandidateView[]> 
           right.hybridScore.overallScore - left.hybridScore.overallScore,
       )
       .slice(0, 10),
+  });
+
+  console.log("[run-match] rerank completed", {
+    jobId,
+    candidates: reranked.length,
   });
 
   return repository.replaceMatchResults(

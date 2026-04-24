@@ -6,9 +6,13 @@ type RouteContext = {
   params: Promise<{ id: string }>;
 };
 
+export const runtime = "nodejs";
+export const maxDuration = 60;
+
 export async function POST(_: Request, context: RouteContext) {
   try {
     const { id } = await context.params;
+    console.log("[api/jobs/:id/match] started", { jobId: id });
     const matches = await runJobMatch(id);
     invalidateTags([
       CACHE_TAGS.dashboard,
@@ -17,8 +21,15 @@ export async function POST(_: Request, context: RouteContext) {
       `${CACHE_TAGS.matches}:${id}`,
       `${CACHE_TAGS.pipelineHistory}:${id}`,
     ]);
+    console.log("[api/jobs/:id/match] completed", {
+      jobId: id,
+      matches: matches.length,
+    });
     return NextResponse.json(matches);
   } catch (error) {
+    console.error("[api/jobs/:id/match] failed", {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return NextResponse.json(
       {
         error:

@@ -3,6 +3,16 @@
 import { startTransition, useState } from "react";
 import { useRouter } from "next/navigation";
 
+type UploadResponse =
+  | {
+      error?: string;
+      resume?: {
+        status?: string;
+        ingestError?: string | null;
+      } | null;
+    }
+  | null;
+
 export function UploadResumeForm() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -19,24 +29,34 @@ export function UploadResumeForm() {
       body: formData,
     });
 
+    const payload = (await response.json().catch(() => null)) as UploadResponse;
+    const resumeStatus = payload?.resume?.status;
+    const resumeError = payload?.resume?.ingestError;
+
     if (!response.ok) {
-      const data = (await response.json().catch(() => null)) as
-        | { error?: string }
-        | null;
-      setError(data?.error ?? "Falha no upload do currículo.");
+      setError(
+        resumeError ?? payload?.error ?? "Falha no upload do curriculo.",
+      );
+      startTransition(() => {
+        router.refresh();
+      });
       setLoading(false);
       return;
     }
 
-    const payload = (await response.json().catch(() => null)) as
-      | { status?: string }
-      | null;
-
-    setSuccess(
-      payload?.status === "indexed"
-        ? "Curriculo processado e indexado com sucesso."
-        : "Curriculo recebido. O status sera atualizado em instantes.",
-    );
+    if (resumeStatus === "failed" || resumeStatus === "needs_review") {
+      setError(
+        resumeError ?? "Nao foi possivel concluir o processamento do curriculo.",
+      );
+    } else {
+      setSuccess(
+        resumeStatus === "indexed"
+          ? "Curriculo processado e indexado com sucesso."
+          : resumeStatus === "parsing"
+            ? "Curriculo em processamento."
+            : "Curriculo recebido. O status sera atualizado em instantes.",
+      );
+    }
 
     startTransition(() => {
       router.refresh();
@@ -47,7 +67,10 @@ export function UploadResumeForm() {
   return (
     <form action={handleSubmit} className="space-y-4">
       <div className="rounded-[24px] border border-dashed border-[#163f35]/30 bg-[#f3efe6] p-5">
-        <label className="mb-3 block text-sm font-medium text-slate-700" htmlFor="file">
+        <label
+          className="mb-3 block text-sm font-medium text-slate-700"
+          htmlFor="file"
+        >
           Envie PDF ou DOCX
         </label>
         <input
@@ -66,7 +89,7 @@ export function UploadResumeForm() {
         disabled={loading}
         className="rounded-full bg-[#f08a24] px-5 py-3 text-sm font-semibold text-[#1d2b23] transition hover:bg-[#dd7b18] disabled:cursor-not-allowed disabled:opacity-60"
       >
-        {loading ? "Enviando..." : "Enviar currículo"}
+        {loading ? "Enviando..." : "Enviar curriculo"}
       </button>
     </form>
   );

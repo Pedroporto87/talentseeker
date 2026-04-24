@@ -14,6 +14,29 @@ declare global {
   var __resumeGroqClient: Groq | undefined;
 }
 
+async function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  label: string,
+) {
+  let timeoutHandle: NodeJS.Timeout | null = null;
+
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        timeoutHandle = setTimeout(() => {
+          reject(new Error(`${label} excedeu ${timeoutMs}ms.`));
+        }, timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timeoutHandle) {
+      clearTimeout(timeoutHandle);
+    }
+  }
+}
+
 function normalizeYearsExperience(value: unknown) {
   if (typeof value === "number" && Number.isFinite(value)) {
     return Math.max(0, Math.round(value));
@@ -44,7 +67,8 @@ function extractByHeuristics(text: string): ExtractedCandidateProfile {
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter(Boolean);
-  const firstLine = lines.find((line) => /^[A-Za-zÀ-ÿ\s]{5,60}$/.test(line)) ?? "";
+  const firstLine =
+    lines.find((line) => /^[A-Za-zÀ-ÿ\s]{5,60}$/.test(line)) ?? "";
   const emailMatch = text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
   const yearsMatch = [...text.matchAll(/(\d+)\s*\+?\s*(anos?|years?)/gi)]
     .map((match) => Number(match[1]))
@@ -72,7 +96,7 @@ function extractByHeuristics(text: string): ExtractedCandidateProfile {
       ) ?? null,
     location:
       lines.find((line) =>
-        /(são paulo|rio de janeiro|belo horizonte|recife|porto alegre|curitiba|remote|remoto)/i.test(
+        /(são paulo|rio de janeiro|belo horizonte|recife|porto alegre|curitiba|remote|remoto|brasília|brasilia)/i.test(
           line,
         ),
       ) ?? null,
@@ -118,21 +142,25 @@ export async function extractCandidateProfile(text: string) {
   }
 
   try {
-    const completion = await getGroqClient().chat.completions.create({
-      model: getServerEnv().groqModel,
-      temperature: 0.1,
-      messages: [
-        {
-          role: "system",
-          content:
-            "Extraia um perfil de currículo e responda apenas JSON válido com: fullName, email, skills, yearsExperience, currentRole, location, summary.",
-        },
-        {
-          role: "user",
-          content: text.slice(0, 12000),
-        },
-      ],
-    });
+    const completion = await withTimeout(
+      getGroqClient().chat.completions.create({
+        model: getServerEnv().groqModel,
+        temperature: 0.1,
+        messages: [
+          {
+            role: "system",
+            content:
+              "Extraia um perfil de curriculo e responda apenas JSON valido com: fullName, email, skills, yearsExperience, currentRole, location, summary.",
+          },
+          {
+            role: "user",
+            content: text.slice(0, 12000),
+          },
+        ],
+      }),
+      6000,
+      "Extracao de perfil com Groq",
+    );
 
     const content = completion.choices[0]?.message?.content ?? "";
     const parsed = extractJsonBlock<Partial<ExtractedCandidateProfile>>(content);
@@ -168,37 +196,41 @@ export async function rerankWithGroq(params: {
   }
 
   try {
-    const completion = await getGroqClient().chat.completions.create({
-      model: getServerEnv().groqModel,
-      temperature: 0.2,
-      messages: [
-        {
-          role: "system",
-          content:
-            "Você é um analista de recrutamento. Ordene os candidatos mais aderentes para a vaga. Responda apenas JSON válido em array com objetos { candidateId, score, justification }. score deve estar entre 0 e 100.",
-        },
-        {
-          role: "user",
-          content: JSON.stringify({
-            job: {
-              title: params.job.title,
-              description: params.job.description,
-              keywords: params.job.keywords,
-            },
-            candidates: params.candidates.map((candidate) => ({
-              candidateId: candidate.candidate.id,
-              fullName: candidate.candidate.fullName,
-              currentRole: candidate.candidate.currentRole,
-              yearsExperience: candidate.candidate.yearsExperience,
-              skills: candidate.candidate.skills,
-              summary: candidate.candidate.summary,
-              score: Math.round(candidate.hybridScore.overallScore * 100),
-              evidence: candidate.matchingEvidence,
-            })),
-          }),
-        },
-      ],
-    });
+    const completion = await withTimeout(
+      getGroqClient().chat.completions.create({
+        model: getServerEnv().groqModel,
+        temperature: 0.2,
+        messages: [
+          {
+            role: "system",
+            content:
+              "Voce e um analista de recrutamento. Ordene os candidatos mais aderentes para a vaga. Responda apenas JSON valido em array com objetos { candidateId, score, justification }. score deve estar entre 0 e 100.",
+          },
+          {
+            role: "user",
+            content: JSON.stringify({
+              job: {
+                title: params.job.title,
+                description: params.job.description,
+                keywords: params.job.keywords,
+              },
+              candidates: params.candidates.map((candidate) => ({
+                candidateId: candidate.candidate.id,
+                fullName: candidate.candidate.fullName,
+                currentRole: candidate.candidate.currentRole,
+                yearsExperience: candidate.candidate.yearsExperience,
+                skills: candidate.candidate.skills,
+                summary: candidate.candidate.summary,
+                score: Math.round(candidate.hybridScore.overallScore * 100),
+                evidence: candidate.matchingEvidence,
+              })),
+            }),
+          },
+        ],
+      }),
+      8000,
+      "Rerank com Groq",
+    );
 
     const content = completion.choices[0]?.message?.content ?? "";
     const parsed = extractArrayBlock<{
@@ -222,7 +254,7 @@ export async function rerankWithGroq(params: {
           justification:
             item.justification?.trim() ||
             candidate.matchingEvidence[0] ||
-            "Boa aderência entre a vaga e o currículo.",
+            "Boa aderencia entre a vaga e o curriculo.",
         };
       })
       .sort((left, right) => right.score - left.score)
