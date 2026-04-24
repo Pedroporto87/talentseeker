@@ -101,13 +101,19 @@ export function CreateJobForm() {
       </div>
       {error ? <p className="text-sm text-rose-700">{error}</p> : null}
       {success ? <p className="text-sm text-emerald-700">{success}</p> : null}
-      <button
-        type="submit"
-        disabled={loading}
-        className="rounded-full bg-[#163f35] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#0f3028] disabled:cursor-not-allowed disabled:opacity-60"
-      >
-        {loading ? "Cadastrando..." : "Cadastrar vaga"}
-      </button>
+      <div className="space-y-3">
+        <p className="text-sm font-medium text-[#163f35]">
+          Encontre o candidato aderente a vaga aqui com IA.
+        </p>
+        <button
+          type="submit"
+          disabled={loading}
+          aria-busy={loading}
+          className="rounded-full bg-[#163f35] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#0f3028] disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {loading ? "Cadastrando..." : "Cadastrar vaga"}
+        </button>
+      </div>
     </form>
   );
 }
