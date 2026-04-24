@@ -20,6 +20,22 @@ import { uniqueStrings } from "@/lib/utils";
 
 export class MatchValidationError extends Error {}
 
+function cosineSimilarity(left: number[], right: number[]) {
+  let dot = 0;
+  let leftNorm = 0;
+  let rightNorm = 0;
+
+  for (let index = 0; index < Math.max(left.length, right.length); index += 1) {
+    const leftValue = left[index] ?? 0;
+    const rightValue = right[index] ?? 0;
+    dot += leftValue * rightValue;
+    leftNorm += leftValue ** 2;
+    rightNorm += rightValue ** 2;
+  }
+
+  return dot / ((Math.sqrt(leftNorm) || 1) * (Math.sqrt(rightNorm) || 1));
+}
+
 async function processPendingResumes() {
   const repository = getRepository();
   const resumes = await repository.listResumes();
@@ -45,6 +61,67 @@ async function processPendingResumes() {
   }
 
   return repository.listResumes();
+}
+
+async function buildFallbackCandidates(params: {
+  resumes: Awaited<ReturnType<typeof processPendingResumes>>;
+  keywords: string[];
+  query: string;
+}) {
+  const repository = getRepository();
+  const queryEmbedding = await createEmbedding(params.query);
+  const rankedCandidates: RankingCandidate[] = [];
+
+  for (const item of params.resumes) {
+    if (item.resume.status !== "indexed" || !item.candidate) {
+      continue;
+    }
+
+    const bundle = await repository.getResume(item.resume.id);
+    if (!bundle?.candidate || bundle.resume.status !== "indexed") {
+      continue;
+    }
+
+    const resumeText = [
+      bundle.resume.extractedText,
+      bundle.candidate.summary,
+      bundle.candidate.skills.join(" "),
+    ]
+      .filter(Boolean)
+      .join(" ");
+
+    const semanticScore = cosineSimilarity(
+      queryEmbedding,
+      await createEmbedding(resumeText),
+    );
+
+    const hybridScore = calculateHybridScore({
+      semanticScore,
+      candidate: bundle.candidate,
+      keywords: params.keywords,
+      resumeText,
+    });
+
+    rankedCandidates.push({
+      candidate: bundle.candidate,
+      resume: bundle.resume,
+      hybridScore,
+      matchingEvidence: uniqueStrings(
+        buildEvidence({
+          candidate: bundle.candidate,
+          keywords: params.keywords,
+          resumeText: bundle.resume.extractedText ?? "",
+        }),
+      ),
+    });
+  }
+
+  return rankedCandidates
+    .sort(
+      (left, right) =>
+        right.hybridScore.overallScore - left.hybridScore.overallScore,
+    )
+    .slice(0, 10);
 }
 
 export async function runJobMatch(jobId: string): Promise<MatchCandidateView[]> {
@@ -74,76 +151,86 @@ export async function runJobMatch(jobId: string): Promise<MatchCandidateView[]> 
     indexedResumes: resumes.filter((item) => item.resume.status === "indexed").length,
   });
 
-  let hits = await searchResumeVectors(searchQuery, 20);
+  let rankedCandidates: RankingCandidate[] = [];
 
-  if (hits.length === 0 && isQdrantConfigured()) {
-    const vectorCount = await getResumeVectorCount();
-    if (vectorCount === 0) {
-      await ensureResumeVectorsIndexed();
-      hits = await searchResumeVectors(searchQuery, 20);
-    }
-  }
+  try {
+    let hits = await searchResumeVectors(searchQuery, 20);
 
-  console.log("[run-match] vector search completed", {
-    jobId,
-    hits: hits.length,
-  });
-
-  const grouped = new Map<string, { resumeId: string; semanticScore: number }>();
-
-  for (const hit of hits) {
-    const current = grouped.get(hit.payload.resumeId);
-    if (!current || hit.score > current.semanticScore) {
-      grouped.set(hit.payload.resumeId, {
-        resumeId: hit.payload.resumeId,
-        semanticScore: hit.score,
-      });
-    }
-  }
-
-  const rankedCandidates: RankingCandidate[] = [];
-
-  for (const item of grouped.values()) {
-    const bundle = await repository.getResume(item.resumeId);
-    if (!bundle?.candidate || bundle.resume.status !== "indexed") {
-      continue;
+    if (hits.length === 0 && isQdrantConfigured()) {
+      const vectorCount = await getResumeVectorCount();
+      if (vectorCount === 0) {
+        await ensureResumeVectorsIndexed();
+        hits = await searchResumeVectors(searchQuery, 20);
+      }
     }
 
-    const hybridScore = calculateHybridScore({
-      semanticScore: item.semanticScore,
-      candidate: bundle.candidate,
-      keywords: job.keywords,
-      resumeText: [
-        bundle.resume.extractedText,
-        bundle.candidate.summary,
-        bundle.candidate.skills.join(" "),
-      ]
-        .filter(Boolean)
-        .join(" "),
+    console.log("[run-match] vector search completed", {
+      jobId,
+      hits: hits.length,
     });
 
-    rankedCandidates.push({
-      candidate: bundle.candidate,
-      resume: bundle.resume,
-      hybridScore,
-      matchingEvidence: uniqueStrings(
-        buildEvidence({
-          candidate: bundle.candidate,
-          keywords: job.keywords,
-          resumeText: bundle.resume.extractedText ?? "",
-        }),
-      ),
+    const grouped = new Map<string, { resumeId: string; semanticScore: number }>();
+
+    for (const hit of hits) {
+      const current = grouped.get(hit.payload.resumeId);
+      if (!current || hit.score > current.semanticScore) {
+        grouped.set(hit.payload.resumeId, {
+          resumeId: hit.payload.resumeId,
+          semanticScore: hit.score,
+        });
+      }
+    }
+
+    for (const item of grouped.values()) {
+      const bundle = await repository.getResume(item.resumeId);
+      if (!bundle?.candidate || bundle.resume.status !== "indexed") {
+        continue;
+      }
+
+      const hybridScore = calculateHybridScore({
+        semanticScore: item.semanticScore,
+        candidate: bundle.candidate,
+        keywords: job.keywords,
+        resumeText: [
+          bundle.resume.extractedText,
+          bundle.candidate.summary,
+          bundle.candidate.skills.join(" "),
+        ]
+          .filter(Boolean)
+          .join(" "),
+      });
+
+      rankedCandidates.push({
+        candidate: bundle.candidate,
+        resume: bundle.resume,
+        hybridScore,
+        matchingEvidence: uniqueStrings(
+          buildEvidence({
+            candidate: bundle.candidate,
+            keywords: job.keywords,
+            resumeText: bundle.resume.extractedText ?? "",
+          }),
+        ),
+      });
+    }
+  } catch (error) {
+    console.error("[run-match] vector search failed, using fallback", {
+      jobId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+
+  if (rankedCandidates.length === 0) {
+    rankedCandidates = await buildFallbackCandidates({
+      resumes,
+      keywords: job.keywords,
+      query,
     });
   }
 
   const reranked = await rerankWithGroq({
     job,
-    candidates: rankedCandidates
-      .sort(
-        (left, right) =>
-          right.hybridScore.overallScore - left.hybridScore.overallScore,
-      )
-      .slice(0, 10),
+    candidates: rankedCandidates,
   });
 
   console.log("[run-match] rerank completed", {
