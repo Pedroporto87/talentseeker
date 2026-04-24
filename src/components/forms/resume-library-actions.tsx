@@ -3,13 +3,47 @@
 import { startTransition, useState } from "react";
 import { useRouter } from "next/navigation";
 
-type ActionState = "attempts" | "all" | null;
+type ActionState = "seed" | "attempts" | "all" | null;
 
 export function ResumeLibraryActions() {
   const router = useRouter();
   const [loading, setLoading] = useState<ActionState>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  async function handleSeed() {
+    setLoading("seed");
+    setError(null);
+    setSuccess(null);
+
+    const response = await fetch("/api/resumes/seed", {
+      method: "POST",
+    });
+
+    if (!response.ok) {
+      const data = (await response.json().catch(() => null)) as
+        | { error?: string }
+        | null;
+      setError(data?.error ?? "Nao foi possivel carregar os curriculos de exemplo.");
+      setLoading(null);
+      return;
+    }
+
+    const result = (await response.json().catch(() => null)) as
+      | { createdCount?: number; totalSeedCandidates?: number }
+      | null;
+
+    setSuccess(
+      result?.createdCount
+        ? `${result.createdCount} curriculos de exemplo adicionados.`
+        : "Base de curriculos de exemplo carregada.",
+    );
+
+    startTransition(() => {
+      router.refresh();
+    });
+    setLoading(null);
+  }
 
   async function handleClear(scope: "attempts" | "all") {
     setLoading(scope);
@@ -50,6 +84,14 @@ export function ResumeLibraryActions() {
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
+          onClick={handleSeed}
+          disabled={loading !== null}
+          className="rounded-full bg-[#163f35] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#0f3028] disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {loading === "seed" ? "Adicionando exemplos..." : "Adicionar exemplos"}
+        </button>
+        <button
+          type="button"
           onClick={() => handleClear("attempts")}
           disabled={loading !== null}
           className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
@@ -66,7 +108,7 @@ export function ResumeLibraryActions() {
         </button>
       </div>
       <p className="text-xs text-slate-500">
-        Use estas acoes apenas para remover tentativas com erro ou limpar toda a biblioteca quando quiser recomecar os testes.
+        Voce pode adicionar curriculos de exemplo para testar o matching sem apagar os curriculos reais enviados pela plataforma.
       </p>
       {error ? <p className="text-sm text-rose-700">{error}</p> : null}
       {success ? <p className="text-sm text-emerald-700">{success}</p> : null}
