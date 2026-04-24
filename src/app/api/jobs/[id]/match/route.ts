@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { CACHE_TAGS, invalidateTags } from "@/lib/server/cached-queries";
-import { runJobMatch } from "@/lib/server/services/run-match";
+import { MatchValidationError, runJobMatch } from "@/lib/server/services/run-match";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -24,7 +24,7 @@ export async function POST(_: Request, context: RouteContext) {
         error:
           error instanceof Error ? error.message : "Falha ao executar matching.",
       },
-      { status: 500 },
+      { status: error instanceof MatchValidationError ? 400 : 500 },
     );
   }
 }

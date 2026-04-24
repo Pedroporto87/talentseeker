@@ -17,19 +17,29 @@ import { ensureResumeVectorsIndexed } from "@/lib/server/services/reindex-resume
 import type { MatchCandidateView, PipelineStage, RankingCandidate } from "@/lib/types";
 import { uniqueStrings } from "@/lib/utils";
 
+export class MatchValidationError extends Error {}
+
 export async function runJobMatch(jobId: string): Promise<MatchCandidateView[]> {
   const repository = getRepository();
   const job = await repository.getJob(jobId);
 
   if (!job) {
-    throw new Error("Vaga não encontrada.");
+    throw new MatchValidationError("Vaga nao encontrada.");
+  }
+
+  const resumes = await repository.listResumes();
+  const hasIndexedResume = resumes.some((item) => item.resume.status === "indexed");
+
+  if (!hasIndexedResume) {
+    throw new MatchValidationError(
+      "Cadastre ao menos um curriculo antes de rodar o matching.",
+    );
   }
 
   const query = [job.title, job.description, job.keywords.join(" ")].join("\n");
-  const searchQuery =
-    isQdrantCloudInferenceConfigured()
-      ? createQdrantDocument(query)
-      : await createEmbedding(query);
+  const searchQuery = isQdrantCloudInferenceConfigured()
+    ? createQdrantDocument(query)
+    : await createEmbedding(query);
 
   let hits = await searchResumeVectors(searchQuery, 20);
 
@@ -41,10 +51,7 @@ export async function runJobMatch(jobId: string): Promise<MatchCandidateView[]> 
     }
   }
 
-  const grouped = new Map<
-    string,
-    { resumeId: string; semanticScore: number }
-  >();
+  const grouped = new Map<string, { resumeId: string; semanticScore: number }>();
 
   for (const hit of hits) {
     const current = grouped.get(hit.payload.resumeId);
