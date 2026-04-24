@@ -47,13 +47,18 @@ export default async function JobDetailPage({ params }: PageProps) {
               ))}
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <RunMatchButton jobId={job.id} />
-            <DeleteJobButton
-              jobId={job.id}
-              label="Excluir vaga"
-              redirectTo="/vagas"
-            />
+          <div className="w-full max-w-md lg:w-auto">
+            <p className="text-sm font-medium text-[#163f35] lg:text-right">
+              Encontre o candidato aderente a vaga aqui com IA.
+            </p>
+            <div className="mt-3 flex flex-wrap items-start gap-3 lg:justify-end">
+              <RunMatchButton jobId={job.id} />
+              <DeleteJobButton
+                jobId={job.id}
+                label="Excluir vaga"
+                redirectTo="/vagas"
+              />
+            </div>
           </div>
         </div>
       </Card>

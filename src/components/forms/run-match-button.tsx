@@ -32,9 +32,6 @@ export function RunMatchButton({ jobId }: { jobId: string }) {
 
   return (
     <div className="space-y-2">
-      <p className="text-sm font-medium text-[#163f35]">
-        Encontre o candidato aderente a vaga aqui com IA.
-      </p>
       <button
         type="button"
         onClick={handleClick}

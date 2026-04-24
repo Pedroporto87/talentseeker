@@ -37,7 +37,7 @@ const TOUR_STEPS: TourStep[] = [
     description:
       "Em Curriculos, e possivel anexar arquivos PDF ou DOCX, acompanhar o status da ingestao e limpar tentativas.",
     route: "/curriculos",
-    hint: "Se quiser acelerar a demo, voce pode usar a base demo para popular o sistema rapidamente.",
+    hint: "Use essa tela para acompanhar se os arquivos enviados foram recebidos, processados e indexados corretamente.",
   },
   {
     title: "Executar o matching",
@@ -80,7 +80,6 @@ export function GuidedTour({
   const [stepIndex, setStepIndex] = useState(0);
 
   const currentStep = TOUR_STEPS[stepIndex];
-  const isOnStepRoute = pathname === currentStep.route;
   const shouldAutoOpen =
     hydrated &&
     !dismissed &&
@@ -90,6 +89,16 @@ export function GuidedTour({
     () => `${stepIndex + 1} de ${TOUR_STEPS.length}`,
     [stepIndex],
   );
+  const currentRoute = getStepRoute(currentStep);
+  const isOnStepRoute = pathname === currentRoute;
+
+  function getStepRoute(step: TourStep) {
+    if (step.title === "Executar o matching" && pathname.startsWith("/vagas/")) {
+      return pathname;
+    }
+
+    return step.route;
+  }
 
   function closeTour(markCompleted = true) {
     if (markCompleted && hydrated) {
@@ -101,20 +110,35 @@ export function GuidedTour({
 
   function handleNext() {
     if (stepIndex === TOUR_STEPS.length - 1) {
+      startTransition(() => {
+        router.push("/");
+      });
       closeTour(true);
       return;
     }
 
-    setStepIndex((current) => current + 1);
+    const nextIndex = stepIndex + 1;
+    const nextStep = TOUR_STEPS[nextIndex];
+
+    setStepIndex(nextIndex);
+    startTransition(() => {
+      router.push(getStepRoute(nextStep));
+    });
   }
 
   function handlePrevious() {
-    setStepIndex((current) => Math.max(0, current - 1));
+    const previousIndex = Math.max(0, stepIndex - 1);
+    const previousStep = TOUR_STEPS[previousIndex];
+
+    setStepIndex(previousIndex);
+    startTransition(() => {
+      router.push(getStepRoute(previousStep));
+    });
   }
 
   function navigateToStep() {
     startTransition(() => {
-      router.push(currentStep.route);
+      router.push(currentRoute);
     });
   }
 
@@ -160,7 +184,12 @@ export function GuidedTour({
             <button
               key={step.title}
               type="button"
-              onClick={() => setStepIndex(index)}
+              onClick={() => {
+                setStepIndex(index);
+                startTransition(() => {
+                  router.push(getStepRoute(step));
+                });
+              }}
               className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
                 index === stepIndex
                   ? "bg-[#163f35] text-white"
@@ -176,7 +205,7 @@ export function GuidedTour({
           <div className="text-sm text-slate-600">
             {isOnStepRoute
               ? "Voce ja esta na pagina certa para este passo."
-              : `Pagina sugerida para este passo: ${currentStep.route}`}
+              : `Pagina sugerida para este passo: ${currentRoute}`}
           </div>
 
           <div className="flex flex-wrap gap-2">
