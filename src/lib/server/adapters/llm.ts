@@ -14,6 +14,21 @@ declare global {
   var __resumeGroqClient: Groq | undefined;
 }
 
+function normalizeYearsExperience(value: unknown) {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return Math.max(0, Math.round(value));
+  }
+
+  if (typeof value === "string") {
+    const normalized = Number(value.replace(",", ".").trim());
+    if (Number.isFinite(normalized)) {
+      return Math.max(0, Math.round(normalized));
+    }
+  }
+
+  return null;
+}
+
 function getGroqClient() {
   if (!globalThis.__resumeGroqClient) {
     globalThis.__resumeGroqClient = new Groq({
@@ -48,7 +63,7 @@ function extractByHeuristics(text: string): ExtractedCandidateProfile {
     fullName: toTitleCase(firstLine || nameFromEmail || "Candidato sem nome"),
     email: emailMatch?.[0]?.toLowerCase() ?? null,
     skills: uniqueStrings(skills.map((skill) => skill.toString())),
-    yearsExperience: Number.isFinite(yearsMatch) ? yearsMatch : null,
+    yearsExperience: Number.isFinite(yearsMatch) ? Math.round(yearsMatch) : null,
     currentRole:
       lines.find((line) =>
         /(desenvolvedor|developer|engineer|analista|designer|product|devops)/i.test(
@@ -130,7 +145,9 @@ export async function extractCandidateProfile(text: string) {
       fullName: parsed.fullName?.trim() || fallback.fullName,
       email: parsed.email?.trim() || fallback.email,
       skills: uniqueStrings(parsed.skills ?? fallback.skills),
-      yearsExperience: parsed.yearsExperience ?? fallback.yearsExperience,
+      yearsExperience:
+        normalizeYearsExperience(parsed.yearsExperience) ??
+        fallback.yearsExperience,
       currentRole: parsed.currentRole?.trim() || fallback.currentRole,
       location: parsed.location?.trim() || fallback.location,
       summary: parsed.summary?.trim() || fallback.summary,

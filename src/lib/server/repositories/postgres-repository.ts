@@ -193,6 +193,14 @@ function iso(value: string | Date | null | undefined) {
   return Number.isNaN(parsed.getTime()) ? "" : parsed.toISOString();
 }
 
+function normalizeYearsExperience(value: number | null) {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return null;
+  }
+
+  return Math.max(0, Math.round(value));
+}
+
 function mapCandidate(row: CandidateRow): CandidateProfile {
   return {
     id: row.id,
@@ -255,23 +263,6 @@ function mapChunk(row: ChunkRow): ResumeChunkRecord {
     content: row.content,
     tokenCount: row.token_count,
     createdAt: iso(row.created_at),
-  };
-}
-
-function mapMatch(row: MatchRow): MatchCandidateView["result"] {
-  return {
-    id: row.id,
-    jobId: row.job_id,
-    candidateId: row.candidate_id,
-    resumeId: row.resume_id,
-    overallScore: Number(row.overall_score),
-    semanticScore: Number(row.semantic_score),
-    keywordScore: Number(row.keyword_score),
-    profileScore: Number(row.profile_score),
-    justification: row.justification,
-    stage: row.stage as MatchCandidateView["result"]["stage"],
-    createdAt: iso(row.created_at),
-    updatedAt: iso(row.updated_at),
   };
 }
 
@@ -657,6 +648,7 @@ export const postgresRepository: AppRepository = {
   async upsertCandidateProfile(input: CandidateProfileInput, existingId?: string) {
     const sql = getSqlClient();
     const id = existingId ?? crypto.randomUUID();
+    const yearsExperience = normalizeYearsExperience(input.yearsExperience);
     const [row] = await sql<CandidateRow[]>`
       INSERT INTO candidate_profiles (
         id, full_name, email, skills, years_experience,
@@ -664,7 +656,7 @@ export const postgresRepository: AppRepository = {
       )
       VALUES (
         ${id}, ${input.fullName}, ${input.email}, ${sql.json(input.skills)},
-        ${input.yearsExperience}, ${input.currentRole}, ${input.location},
+        ${yearsExperience}, ${input.currentRole}, ${input.location},
         ${input.summary}, NOW(), NOW()
       )
       ON CONFLICT (id)

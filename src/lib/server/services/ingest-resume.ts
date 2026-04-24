@@ -39,8 +39,14 @@ export async function ingestResume(resumeId: string) {
     errorMessage: null,
   });
 
-  const duplicate = await repository.findResumeByFileHash(bundle.resume.fileHash);
-  if (duplicate && duplicate.id !== resumeId && duplicate.status === "indexed") {
+  const duplicate = (await repository.listResumes()).find(
+    (item) =>
+      item.resume.fileHash === bundle.resume.fileHash &&
+      item.resume.id !== resumeId &&
+      item.resume.status === "indexed",
+  )?.resume;
+
+  if (duplicate) {
     const message =
       "Este curriculo ja foi cadastrado anteriormente. Remova a versao existente antes de reenviar o mesmo arquivo.";
     await repository.updateResume(resumeId, {

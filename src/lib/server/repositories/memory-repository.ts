@@ -33,6 +33,14 @@ function now() {
   return new Date().toISOString();
 }
 
+function normalizeYearsExperience(value: number | null) {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return null;
+  }
+
+  return Math.max(0, Math.round(value));
+}
+
 function getState() {
   if (!globalThis.__resumeMemoryRepoState) {
     globalThis.__resumeMemoryRepoState = {
@@ -244,10 +252,14 @@ export const memoryRepository: AppRepository = {
   },
   async upsertCandidateProfile(input: CandidateProfileInput, existingId?: string) {
     const state = getState();
+    const normalizedInput = {
+      ...input,
+      yearsExperience: normalizeYearsExperience(input.yearsExperience),
+    };
     const candidate = state.candidates.find((item) => item.id === existingId);
 
     if (candidate) {
-      Object.assign(candidate, input, { updatedAt: now() });
+      Object.assign(candidate, normalizedInput, { updatedAt: now() });
       return candidate;
     }
 
@@ -255,7 +267,7 @@ export const memoryRepository: AppRepository = {
       id: crypto.randomUUID(),
       createdAt: now(),
       updatedAt: now(),
-      ...input,
+      ...normalizedInput,
     };
     state.candidates.unshift(created);
     return created;
