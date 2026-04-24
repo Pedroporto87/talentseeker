@@ -9,10 +9,12 @@ export function ResumeLibraryActions() {
   const router = useRouter();
   const [loading, setLoading] = useState<ActionState>(null);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   async function handleSeed() {
     setLoading("seed");
     setError(null);
+    setSuccess(null);
 
     const response = await fetch("/api/resumes/seed", {
       method: "POST",
@@ -27,6 +29,16 @@ export function ResumeLibraryActions() {
       return;
     }
 
+    const result = (await response.json().catch(() => null)) as
+      | { createdCount?: number; totalSeedCandidates?: number }
+      | null;
+
+    setSuccess(
+      result?.createdCount
+        ? `${result.createdCount} curriculos demo preparados para teste.`
+        : "Base demo gerada com sucesso.",
+    );
+
     startTransition(() => {
       router.refresh();
     });
@@ -36,6 +48,7 @@ export function ResumeLibraryActions() {
   async function handleClear(scope: "attempts" | "all") {
     setLoading(scope);
     setError(null);
+    setSuccess(null);
 
     const response = await fetch(`/api/resumes?scope=${scope}`, {
       method: "DELETE",
@@ -49,6 +62,16 @@ export function ResumeLibraryActions() {
       setLoading(null);
       return;
     }
+
+    const result = (await response.json().catch(() => null)) as
+      | { deletedCount?: number }
+      | null;
+
+    setSuccess(
+      typeof result?.deletedCount === "number"
+        ? `${result.deletedCount} curriculos removidos.`
+        : "Biblioteca limpa com sucesso.",
+    );
 
     startTransition(() => {
       router.refresh();
@@ -88,6 +111,7 @@ export function ResumeLibraryActions() {
         A base demo cria curriculos indexados com perfis variados para testar ranking e pipeline.
       </p>
       {error ? <p className="text-sm text-rose-700">{error}</p> : null}
+      {success ? <p className="text-sm text-emerald-700">{success}</p> : null}
     </div>
   );
 }

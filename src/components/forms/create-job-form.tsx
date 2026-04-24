@@ -1,16 +1,19 @@
 "use client";
 
-import { startTransition, useState } from "react";
+import { startTransition, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 export function CreateJobForm() {
   const router = useRouter();
+  const formRef = useRef<HTMLFormElement>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   async function handleSubmit(formData: FormData) {
     setLoading(true);
     setError(null);
+    setSuccess(null);
 
     const payload = {
       title: String(formData.get("title") ?? ""),
@@ -35,14 +38,30 @@ export function CreateJobForm() {
       return;
     }
 
+    const created = (await response.json().catch(() => null)) as
+      | { id?: string; title?: string }
+      | null;
+
+    formRef.current?.reset();
+    setSuccess(
+      created?.title
+        ? `Vaga "${created.title}" criada com sucesso.`
+        : "Vaga criada com sucesso.",
+    );
+
     startTransition(() => {
+      if (created?.id) {
+        router.push(`/vagas/${created.id}`);
+        return;
+      }
+
       router.refresh();
     });
     setLoading(false);
   }
 
   return (
-    <form action={handleSubmit} className="space-y-4">
+    <form ref={formRef} action={handleSubmit} className="space-y-4">
       <div className="space-y-2">
         <label className="text-sm font-medium text-slate-700" htmlFor="title">
           Nome da vaga
@@ -81,6 +100,7 @@ export function CreateJobForm() {
         />
       </div>
       {error ? <p className="text-sm text-rose-700">{error}</p> : null}
+      {success ? <p className="text-sm text-emerald-700">{success}</p> : null}
       <button
         type="submit"
         disabled={loading}

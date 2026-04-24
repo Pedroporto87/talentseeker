@@ -7,10 +7,12 @@ export function UploadResumeForm() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   async function handleSubmit(formData: FormData) {
     setLoading(true);
     setError(null);
+    setSuccess(null);
 
     const response = await fetch("/api/resumes/upload", {
       method: "POST",
@@ -25,6 +27,16 @@ export function UploadResumeForm() {
       setLoading(false);
       return;
     }
+
+    const payload = (await response.json().catch(() => null)) as
+      | { status?: string }
+      | null;
+
+    setSuccess(
+      payload?.status === "indexed"
+        ? "Curriculo processado e indexado com sucesso."
+        : "Curriculo recebido. O status sera atualizado em instantes.",
+    );
 
     startTransition(() => {
       router.refresh();
@@ -48,6 +60,7 @@ export function UploadResumeForm() {
         />
       </div>
       {error ? <p className="text-sm text-rose-700">{error}</p> : null}
+      {success ? <p className="text-sm text-emerald-700">{success}</p> : null}
       <button
         type="submit"
         disabled={loading}

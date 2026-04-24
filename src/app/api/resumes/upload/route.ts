@@ -11,6 +11,7 @@ export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   try {
+    const requestUrl = new URL(request.url);
     const formData = await request.formData();
     const file = formData.get("file");
 
@@ -51,7 +52,7 @@ export async function POST(request: Request) {
       downloadUrl: storedFile.downloadUrl,
     });
 
-    if (shouldUseInngestCloud()) {
+    if (shouldUseInngestCloud(requestUrl.hostname)) {
       await inngest.send({
         name: "resume/uploaded",
         data: {
@@ -59,13 +60,12 @@ export async function POST(request: Request) {
         },
       });
     } else {
-      void ingestResume(created.resume.id).catch((error) => {
-        console.error("Erro no processamento local do curriculo", error);
-      });
+      await ingestResume(created.resume.id);
     }
 
     invalidateTags([CACHE_TAGS.dashboard, CACHE_TAGS.resumes]);
-    return NextResponse.json(created, { status: 201 });
+    const refreshed = await repository.getResume(created.resume.id);
+    return NextResponse.json(refreshed ?? created, { status: 201 });
   } catch (error) {
     return NextResponse.json(
       {

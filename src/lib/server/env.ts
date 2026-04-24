@@ -56,6 +56,25 @@ export function isInngestConfigured() {
   return Boolean(getServerEnv().inngestEventKey);
 }
 
-export function shouldUseInngestCloud() {
-  return isInngestConfigured() && process.env.NODE_ENV === "production";
+export function isLocalHostname(hostname: string) {
+  return (
+    hostname === "localhost" ||
+    hostname === "127.0.0.1" ||
+    hostname === "0.0.0.0" ||
+    hostname.startsWith("192.168.") ||
+    hostname.startsWith("10.") ||
+    /^172\.(1[6-9]|2\d|3[0-1])\./.test(hostname)
+  );
+}
+
+export function shouldUseInngestCloud(hostname?: string) {
+  if (!isInngestConfigured() || process.env.NODE_ENV !== "production") {
+    return false;
+  }
+
+  if (hostname && isLocalHostname(hostname)) {
+    return false;
+  }
+
+  return true;
 }
