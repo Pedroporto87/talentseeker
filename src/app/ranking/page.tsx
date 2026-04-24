@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { ScorePill } from "@/components/score-pill";
 import {
-  listJobsCached,
+  listJobOptionsCached,
   listMatchesCached,
 } from "@/lib/server/cached-queries";
 
@@ -12,7 +12,7 @@ type RankingPageProps = {
 
 export default async function RankingPage({ searchParams }: RankingPageProps) {
   const params = await searchParams;
-  const jobs = await listJobsCached();
+  const jobs = await listJobOptionsCached();
   const currentJob =
     jobs.find((job) => job.id === params.jobId) ?? jobs[0] ?? null;
   const matches = currentJob ? await listMatchesCached(currentJob.id) : [];

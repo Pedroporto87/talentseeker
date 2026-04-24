@@ -482,6 +482,19 @@ export const postgresRepository: AppRepository = {
           `;
     return rows.map(mapJob);
   },
+  async listJobOptions() {
+    const sql = getSqlClient();
+    const rows = await sql<Pick<JobRow, "id" | "title">[]>`
+      SELECT id, title
+      FROM jobs
+      ORDER BY created_at DESC
+    `;
+
+    return rows.map((row) => ({
+      id: row.id,
+      title: row.title,
+    }));
+  },
   async getJob(id) {
     if (!id) {
       return null;
@@ -536,7 +549,7 @@ export const postgresRepository: AppRepository = {
         r.storage_key AS resume_storage_key,
         r.download_url AS resume_download_url,
         r.status AS resume_status,
-        r.extracted_text AS resume_extracted_text,
+        NULL::text AS resume_extracted_text,
         r.ingest_error AS resume_ingest_error,
         r.created_at AS resume_created_at,
         r.updated_at AS resume_updated_at,
@@ -804,7 +817,7 @@ export const postgresRepository: AppRepository = {
         r.storage_key AS resume_storage_key,
         r.download_url AS resume_download_url,
         r.status AS resume_status,
-        r.extracted_text AS resume_extracted_text,
+        NULL::text AS resume_extracted_text,
         r.ingest_error AS resume_ingest_error,
         r.created_at AS resume_created_at,
         r.updated_at AS resume_updated_at

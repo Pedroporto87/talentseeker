@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { StageSelect } from "@/components/forms/stage-select";
 import { PIPELINE_STAGES, type PipelineStage } from "@/lib/types";
 import {
-  listJobsCached,
+  listJobOptionsCached,
   listMatchesCached,
 } from "@/lib/server/cached-queries";
 
@@ -21,7 +21,7 @@ type PipelinePageProps = {
 
 export default async function PipelinePage({ searchParams }: PipelinePageProps) {
   const params = await searchParams;
-  const jobs = await listJobsCached();
+  const jobs = await listJobOptionsCached();
   const currentJob =
     jobs.find((job) => job.id === params.jobId) ?? jobs[0] ?? null;
   const matches = currentJob ? await listMatchesCached(currentJob.id) : [];

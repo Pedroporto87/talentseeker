@@ -73,6 +73,8 @@ export type JobRecord = {
   updatedAt: string;
 };
 
+export type JobOption = Pick<JobRecord, "id" | "title">;
+
 export type MatchResultRecord = {
   id: string;
   jobId: string;

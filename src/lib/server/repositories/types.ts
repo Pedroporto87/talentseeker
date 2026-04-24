@@ -3,6 +3,7 @@ import type {
   DashboardSnapshot,
   IngestJobRecord,
   JobInput,
+  JobOption,
   JobRecord,
   MatchCandidateView,
   PipelineStage,
@@ -41,6 +42,7 @@ export type CandidateProfileInput = {
 export type AppRepository = {
   getDashboardSnapshot(): Promise<DashboardSnapshot>;
   listJobs(limit?: number): Promise<JobRecord[]>;
+  listJobOptions(): Promise<JobOption[]>;
   getJob(id: string): Promise<JobRecord | null>;
   createJob(input: JobInput): Promise<JobRecord>;
   updateJob(id: string, input: JobInput): Promise<JobRecord | null>;

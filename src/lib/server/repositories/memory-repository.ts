@@ -116,6 +116,14 @@ export const memoryRepository: AppRepository = {
 
     return typeof limit === "number" ? jobs.slice(0, limit) : jobs;
   },
+  async listJobOptions() {
+    return this.listJobs().then((jobs) =>
+      jobs.map((job) => ({
+        id: job.id,
+        title: job.title,
+      })),
+    );
+  },
   async getJob(id) {
     return getState().jobs.find((job) => job.id === id) ?? null;
   },
