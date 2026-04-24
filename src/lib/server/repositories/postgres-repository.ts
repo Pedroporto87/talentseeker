@@ -420,38 +420,66 @@ async function getResumeCandidateBundle(resumeId: string): Promise<ResumeWithCan
 export const postgresRepository: AppRepository = {
   async getDashboardSnapshot() {
     const sql = getSqlClient();
-    const [resumeCount] = await sql<Row[]>`SELECT COUNT(*)::int AS count FROM resumes`;
-    const [jobCount] = await sql<Row[]>`SELECT COUNT(*)::int AS count FROM jobs`;
-    const [processedCount] =
-      await sql<Row[]>`SELECT COUNT(*)::int AS count FROM resumes WHERE status = 'indexed'`;
-    const stageRows = await sql<Row[]>`
-      SELECT stage, COUNT(*)::int AS count
-      FROM match_results
-      GROUP BY stage
+    const [row] = await sql<Row[]>`
+      SELECT
+        (SELECT COUNT(*)::int FROM resumes) AS total_resumes,
+        (SELECT COUNT(*)::int FROM jobs) AS active_jobs,
+        (
+          SELECT COUNT(*)::int
+          FROM resumes
+          WHERE status = 'indexed'
+        ) AS processed_resumes,
+        (
+          SELECT COUNT(*)::int FROM match_results WHERE stage = 'aderente'
+        ) AS aderente,
+        (
+          SELECT COUNT(*)::int FROM match_results WHERE stage = 'triagem'
+        ) AS triagem,
+        (
+          SELECT COUNT(*)::int
+          FROM match_results
+          WHERE stage = 'entrevista_inicial'
+        ) AS entrevista_inicial,
+        (
+          SELECT COUNT(*)::int
+          FROM match_results
+          WHERE stage = 'entrevista_tecnica'
+        ) AS entrevista_tecnica,
+        (
+          SELECT COUNT(*)::int FROM match_results WHERE stage = 'contratado'
+        ) AS contratado
     `;
 
     const candidatesByStage = Object.fromEntries(
       PIPELINE_STAGES.map((stage) => [stage, 0]),
     ) as DashboardSnapshot["candidatesByStage"];
 
-    for (const row of stageRows) {
-      if (row.stage in candidatesByStage) {
-        candidatesByStage[row.stage as keyof typeof candidatesByStage] = Number(
-          row.count,
-        );
-      }
+    for (const stage of PIPELINE_STAGES) {
+      candidatesByStage[stage] = Number(row?.[stage] ?? 0);
     }
 
     return {
-      totalResumes: Number(resumeCount?.count ?? 0),
-      activeJobs: Number(jobCount?.count ?? 0),
-      processedResumes: Number(processedCount?.count ?? 0),
+      totalResumes: Number(row?.total_resumes ?? 0),
+      activeJobs: Number(row?.active_jobs ?? 0),
+      processedResumes: Number(row?.processed_resumes ?? 0),
       candidatesByStage,
     };
   },
-  async listJobs() {
+  async listJobs(limit) {
     const sql = getSqlClient();
-    const rows = await sql<JobRow[]>`SELECT * FROM jobs ORDER BY created_at DESC`;
+    const rows =
+      typeof limit === "number"
+        ? await sql<JobRow[]>`
+            SELECT *
+            FROM jobs
+            ORDER BY created_at DESC
+            LIMIT ${limit}
+          `
+        : await sql<JobRow[]>`
+            SELECT *
+            FROM jobs
+            ORDER BY created_at DESC
+          `;
     return rows.map(mapJob);
   },
   async getJob(id) {

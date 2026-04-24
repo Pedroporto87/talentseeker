@@ -21,6 +21,10 @@ export async function listJobsCached() {
   return getRepository().listJobs();
 }
 
+export async function listJobsPreviewCached(limit = 4) {
+  return getRepository().listJobs(limit);
+}
+
 export async function getJobCached(jobId: string) {
   if (!jobId) {
     return null;

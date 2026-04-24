@@ -40,7 +40,7 @@ export type CandidateProfileInput = {
 
 export type AppRepository = {
   getDashboardSnapshot(): Promise<DashboardSnapshot>;
-  listJobs(): Promise<JobRecord[]>;
+  listJobs(limit?: number): Promise<JobRecord[]>;
   getJob(id: string): Promise<JobRecord | null>;
   createJob(input: JobInput): Promise<JobRecord>;
   updateJob(id: string, input: JobInput): Promise<JobRecord | null>;

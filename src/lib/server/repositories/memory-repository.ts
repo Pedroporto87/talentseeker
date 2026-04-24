@@ -109,10 +109,12 @@ export const memoryRepository: AppRepository = {
       candidatesByStage,
     };
   },
-  async listJobs() {
-    return [...getState().jobs].sort((left, right) =>
+  async listJobs(limit) {
+    const jobs = [...getState().jobs].sort((left, right) =>
       right.createdAt.localeCompare(left.createdAt),
     );
+
+    return typeof limit === "number" ? jobs.slice(0, limit) : jobs;
   },
   async getJob(id) {
     return getState().jobs.find((job) => job.id === id) ?? null;

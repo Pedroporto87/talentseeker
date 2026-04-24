@@ -9,7 +9,7 @@ import { Card } from "@/components/ui/card";
 import { StatCard } from "@/components/stat-card";
 import {
   getDashboardSnapshotCached,
-  listJobsCached,
+  listJobsPreviewCached,
 } from "@/lib/server/cached-queries";
 
 export const dynamic = "force-dynamic";
@@ -17,7 +17,7 @@ export const dynamic = "force-dynamic";
 export default async function Home() {
   const [dashboard, jobs] = await Promise.all([
     getDashboardSnapshotCached(),
-    listJobsCached(),
+    listJobsPreviewCached(4),
   ]);
 
   const totalInPipeline = Object.values(dashboard.candidatesByStage).reduce(
@@ -78,7 +78,7 @@ export default async function Home() {
           </div>
 
           <div className="mt-8 grid gap-4 md:grid-cols-2">
-            {jobs.slice(0, 4).map((job) => (
+            {jobs.map((job) => (
               <Link
                 key={job.id}
                 href={`/vagas/${job.id}`}

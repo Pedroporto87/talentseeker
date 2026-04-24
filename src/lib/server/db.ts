@@ -15,7 +15,7 @@ export function getSqlClient() {
   if (!globalThis.__resumeSqlClient) {
     globalThis.__resumeSqlClient = postgres(databaseUrl, {
       prepare: false,
-      max: 1,
+      max: 2,
       connect_timeout: 10,
       idle_timeout: 20,
       ssl: process.env.NODE_ENV === "production" ? "require" : false,
