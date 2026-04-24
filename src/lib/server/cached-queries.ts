@@ -52,10 +52,7 @@ export async function getJobCached(jobId: string) {
 }
 
 export async function listResumesCached() {
-  return unstable_cache(async () => getRepository().listResumes(), ["resumes-list"], {
-    revalidate: CACHE_WINDOWS.matches,
-    tags: [CACHE_TAGS.resumes],
-  })();
+  return getRepository().listResumes();
 }
 
 export async function listMatchesCached(jobId: string | null | undefined) {
@@ -63,14 +60,7 @@ export async function listMatchesCached(jobId: string | null | undefined) {
     return [];
   }
 
-  return unstable_cache(
-    async () => getRepository().listMatches(jobId),
-    ["matches", jobId],
-    {
-      revalidate: CACHE_WINDOWS.matches,
-      tags: [CACHE_TAGS.matches, `${CACHE_TAGS.matches}:${jobId}`],
-    },
-  )();
+  return getRepository().listMatches(jobId);
 }
 
 export async function listPipelineHistoryCached(jobId: string | null | undefined) {
@@ -78,15 +68,5 @@ export async function listPipelineHistoryCached(jobId: string | null | undefined
     return [];
   }
 
-  return unstable_cache(
-    async () => getRepository().listPipelineHistory(jobId),
-    ["pipeline-history", jobId],
-    {
-      revalidate: CACHE_WINDOWS.pipelineHistory,
-      tags: [
-        CACHE_TAGS.pipelineHistory,
-        `${CACHE_TAGS.pipelineHistory}:${jobId}`,
-      ],
-    },
-  )();
+  return getRepository().listPipelineHistory(jobId);
 }
