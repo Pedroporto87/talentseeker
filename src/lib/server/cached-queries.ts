@@ -1,4 +1,3 @@
-import { revalidateTag, unstable_cache } from "next/cache";
 import { getRepository } from "@/lib/server/repositories";
 
 export const CACHE_TAGS = {
@@ -9,35 +8,17 @@ export const CACHE_TAGS = {
   pipelineHistory: "pipeline-history",
 } as const;
 
-const CACHE_WINDOWS = {
-  dashboard: 5,
-  jobs: 30,
-  matches: 10,
-  pipelineHistory: 10,
-} as const;
-
 export function invalidateTags(tags: string[]) {
-  for (const tag of tags) {
-    revalidateTag(tag, "max");
-  }
+  void tags;
+  // Cache de dados desativado para refletir o banco imediatamente na interface.
 }
 
 export async function getDashboardSnapshotCached() {
-  return unstable_cache(
-    async () => getRepository().getDashboardSnapshot(),
-    ["dashboard-snapshot"],
-    {
-      revalidate: CACHE_WINDOWS.dashboard,
-      tags: [CACHE_TAGS.dashboard],
-    },
-  )();
+  return getRepository().getDashboardSnapshot();
 }
 
 export async function listJobsCached() {
-  return unstable_cache(async () => getRepository().listJobs(), ["jobs-list"], {
-    revalidate: CACHE_WINDOWS.jobs,
-    tags: [CACHE_TAGS.jobs],
-  })();
+  return getRepository().listJobs();
 }
 
 export async function getJobCached(jobId: string) {
@@ -45,10 +26,7 @@ export async function getJobCached(jobId: string) {
     return null;
   }
 
-  return unstable_cache(async () => getRepository().getJob(jobId), ["job", jobId], {
-    revalidate: CACHE_WINDOWS.jobs,
-    tags: [CACHE_TAGS.jobs, `${CACHE_TAGS.jobs}:${jobId}`],
-  })();
+  return getRepository().getJob(jobId);
 }
 
 export async function listResumesCached() {
