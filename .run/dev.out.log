@@ -3,11 +3,8 @@
 > next dev
 
 ▲ Next.js 16.2.4 (Turbopack)
-- Local:         http://localhost:3000
-- Network:       http://192.168.15.27:3000
+- Local:         http://localhost:3001
+- Network:       http://192.168.15.27:3001
 - Environments: .env.local
-✓ Ready in 3.9s
-Creating turbopack project {
-  dir: 'C:\\Users\\Administrador\\Desktop\\leitor-de-curriculo',
-  testMode: true
-}
+✓ Ready in 797ms
+[?25h

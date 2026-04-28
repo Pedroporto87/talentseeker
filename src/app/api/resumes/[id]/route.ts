@@ -7,21 +7,33 @@ type RouteContext = {
 };
 
 export async function DELETE(_: Request, context: RouteContext) {
-  const { id } = await context.params;
-  const deleted = await deleteResumeAndAssets(id);
+  try {
+    const { id } = await context.params;
+    const deleted = await deleteResumeAndAssets(id);
 
-  if (!deleted) {
+    if (!deleted) {
+      return NextResponse.json(
+        { error: "Curriculo nao encontrado." },
+        { status: 404 },
+      );
+    }
+
+    invalidateTags([
+      CACHE_TAGS.dashboard,
+      CACHE_TAGS.resumes,
+      CACHE_TAGS.matches,
+      CACHE_TAGS.pipelineHistory,
+    ]);
+    return NextResponse.json({ ok: true });
+  } catch (error) {
     return NextResponse.json(
-      { error: "Curriculo nao encontrado." },
-      { status: 404 },
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Nao foi possivel excluir o curriculo.",
+      },
+      { status: 500 },
     );
   }
-
-  invalidateTags([
-    CACHE_TAGS.dashboard,
-    CACHE_TAGS.resumes,
-    CACHE_TAGS.matches,
-    CACHE_TAGS.pipelineHistory,
-  ]);
-  return NextResponse.json({ ok: true });
 }

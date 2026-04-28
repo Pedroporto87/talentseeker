@@ -1,0 +1,69 @@
+
+> leitor-de-curriculo@0.1.0 dev
+> next dev
+
+▲ Next.js 16.2.4 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.15.27:3000
+- Environments: .env.local
+✓ Ready in 458ms
+Creating turbopack project {
+  dir: 'C:\\Users\\Administrador\\Desktop\\leitor-de-curriculo',
+  testMode: true
+}
+
+ GET / 200 in 4.3s (next.js: 2.3s, application-code: 1917ms)
+ GET / 200 in 2.9s (next.js: 19ms, application-code: 2.9s)
+ GET /vagas 200 in 2.5s (next.js: 803ms, application-code: 1676ms)
+ GET /curriculos 200 in 1331ms (next.js: 717ms, application-code: 614ms)
+ GET /vagas 200 in 289ms (next.js: 9ms, application-code: 281ms)
+ GET /ranking 200 in 1341ms (next.js: 630ms, application-code: 711ms)
+ GET /pipeline 200 in 1376ms (next.js: 639ms, application-code: 737ms)
+ GET / 200 in 1656ms (next.js: 12ms, application-code: 1644ms)
+ GET /curriculos 200 in 533ms (next.js: 8ms, application-code: 525ms)
+[api/resumes/upload] created {
+  resumeId: '57160bae-87ca-43bb-b49b-eb5e442e8475',
+  fileName: 'pedroporto2026.pdf'
+}
+ GET /vagas 200 in 286ms (next.js: 7ms, application-code: 279ms)
+[api/resumes/upload] created {
+  resumeId: 'ad543cc7-fae2-431f-a7ba-e56fce938f87',
+  fileName: 'pedroporto2026.pdf'
+}
+[api/resumes/upload] completed { resumeId: '57160bae-87ca-43bb-b49b-eb5e442e8475', status: 'indexed' }
+ POST /api/resumes/upload 201 in 15.8s (next.js: 3.5s, application-code: 12.3s)
+ GET /vagas 200 in 330ms (next.js: 7ms, application-code: 323ms)
+[api/resumes/upload] completed { resumeId: 'ad543cc7-fae2-431f-a7ba-e56fce938f87', status: 'failed' }
+ POST /api/resumes/upload 201 in 6.5s (next.js: 7ms, application-code: 6.5s)
+ GET /vagas 200 in 299ms (next.js: 7ms, application-code: 293ms)
+ DELETE /api/jobs/9fede2c5-a2c7-490a-906b-3be5609b0686 200 in 1993ms (next.js: 1535ms, application-code: 459ms)
+ GET /vagas 200 in 277ms (next.js: 6ms, application-code: 270ms)
+ GET /curriculos 200 in 556ms (next.js: 5ms, application-code: 550ms)
+ DELETE /api/resumes/ad543cc7-fae2-431f-a7ba-e56fce938f87 200 in 2.8s (next.js: 1045ms, application-code: 1709ms)
+ GET /curriculos 200 in 546ms (next.js: 8ms, application-code: 538ms)
+ DELETE /api/resumes/57160bae-87ca-43bb-b49b-eb5e442e8475 200 in 2.5s (next.js: 32ms, application-code: 2.5s)
+ GET /curriculos 200 in 605ms (next.js: 7ms, application-code: 598ms)
+ GET / 200 in 583ms (next.js: 6ms, application-code: 577ms)
+ GET / 200 in 6.9s (next.js: 7ms, application-code: 6.9s)
+ GET / 200 in 1850ms (next.js: 11ms, application-code: 1839ms)
+ GET /vagas 200 in 1376ms (next.js: 10ms, application-code: 1366ms)
+ GET /curriculos 200 in 527ms (next.js: 8ms, application-code: 518ms)
+ GET /vagas 200 in 248ms (next.js: 6ms, application-code: 242ms)
+ GET /ranking 200 in 255ms (next.js: 12ms, application-code: 243ms)
+ GET /pipeline 200 in 278ms (next.js: 15ms, application-code: 262ms)
+ GET / 200 in 1672ms (next.js: 3ms, application-code: 1669ms)
+ GET /curriculos 200 in 495ms (next.js: 3ms, application-code: 492ms)
+[api/resumes/upload] created {
+  resumeId: '7a21adc6-7e30-4ad6-9416-7e3835459fc8',
+  fileName: 'pedroporto2026.pdf'
+}
+ GET /vagas 200 in 258ms (next.js: 3ms, application-code: 256ms)
+[api/resumes/upload] completed { resumeId: '7a21adc6-7e30-4ad6-9416-7e3835459fc8', status: 'indexed' }
+ POST /api/resumes/upload 201 in 12.5s (next.js: 10ms, application-code: 12.5s)
+ GET /vagas 200 in 312ms (next.js: 3ms, application-code: 308ms)
+ GET /curriculos 200 in 510ms (next.js: 15ms, application-code: 496ms)
+ GET /vagas 200 in 252ms (next.js: 7ms, application-code: 245ms)
+ POST /api/jobs 201 in 2.3s (next.js: 706ms, application-code: 1600ms)
+ GET /vagas/859efb0f-173f-4979-b31a-d294a6b86542 200 in 3.8s (next.js: 2.2s, application-code: 1623ms)
+○ Compiling /api/jobs/[id]/match ...
+[?25h

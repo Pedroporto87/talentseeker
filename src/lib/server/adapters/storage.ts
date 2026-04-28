@@ -24,12 +24,31 @@ export function createFileHash(buffer: Buffer) {
   return createHash("sha256").update(buffer).digest("hex");
 }
 
+export function sanitizeStorageFileName(fileName: string) {
+  const trimmed = fileName.trim();
+  const extensionMatch = trimmed.toLowerCase().match(/\.(pdf|docx)$/);
+  const extension = extensionMatch?.[0] ?? "";
+  const baseName = extension ? trimmed.slice(0, -extension.length) : trimmed;
+  const safeBaseName =
+    baseName
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-zA-Z0-9_-]+/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 120) || "curriculo";
+
+  return `${safeBaseName}${extension}`;
+}
+
 export async function storeResumeFile(params: {
   buffer: Buffer;
   fileName: string;
   contentType: string;
 }) {
-  const storageKey = `resumes/${crypto.randomUUID()}-${params.fileName.replace(/\s+/g, "-")}`;
+  const storageKey = `resumes/${crypto.randomUUID()}-${sanitizeStorageFileName(
+    params.fileName,
+  )}`;
 
   if (isBlobConfigured()) {
     const env = getServerEnv();

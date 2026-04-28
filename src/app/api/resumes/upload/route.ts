@@ -8,6 +8,18 @@ import { ingestResume } from "@/lib/server/services/ingest-resume";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
+function getResumeContentType(file: File) {
+  if (file.name.toLowerCase().endsWith(".pdf")) {
+    return "application/pdf";
+  }
+
+  if (file.name.toLowerCase().endsWith(".docx")) {
+    return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+  }
+
+  return file.type;
+}
+
 export async function POST(request: Request) {
   let createdResumeId: string | null = null;
 
@@ -37,16 +49,24 @@ export async function POST(request: Request) {
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
+    if (buffer.length === 0) {
+      return NextResponse.json(
+        { error: "O arquivo enviado esta vazio." },
+        { status: 400 },
+      );
+    }
+
+    const contentType = getResumeContentType(file);
     const fileHash = createFileHash(buffer);
     const storedFile = await storeResumeFile({
       buffer,
       fileName: file.name,
-      contentType: file.type,
+      contentType,
     });
     const repository = getRepository();
     const created = await repository.createResume({
       fileName: file.name,
-      mimeType: file.type,
+      mimeType: contentType,
       fileHash,
       storageKey: storedFile.storageKey,
       downloadUrl: storedFile.downloadUrl,
@@ -83,6 +103,10 @@ export async function POST(request: Request) {
       resumeId: createdResumeId,
       error: error instanceof Error ? error.message : String(error),
     });
+
+    if (createdResumeId && refreshed) {
+      return NextResponse.json(refreshed, { status: 201 });
+    }
 
     return NextResponse.json(
       {
