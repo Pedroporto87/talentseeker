@@ -1,6 +1,6 @@
 "use client";
 
-import { startTransition, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 type UploadResponse =
@@ -37,9 +37,7 @@ export function UploadResumeForm() {
       setError(
         resumeError ?? payload?.error ?? "Falha no upload do curriculo.",
       );
-      startTransition(() => {
-        router.refresh();
-      });
+      router.refresh();
       setLoading(false);
       return;
     }
@@ -58,9 +56,7 @@ export function UploadResumeForm() {
       );
     }
 
-    startTransition(() => {
-      router.refresh();
-    });
+    router.refresh();
     setLoading(false);
   }
 

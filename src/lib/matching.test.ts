@@ -1,4 +1,9 @@
-import { buildEvidence, calculateHybridScore, rerankFallback } from "@/lib/matching";
+import {
+  aggregateSemanticScore,
+  buildEvidence,
+  calculateHybridScore,
+  rerankFallback,
+} from "@/lib/matching";
 import type { CandidateProfile, RankingCandidate, ResumeRecord } from "@/lib/types";
 
 function createCandidate(overrides: Partial<CandidateProfile> = {}): CandidateProfile {
@@ -58,6 +63,23 @@ describe("matching helpers", () => {
     });
 
     expect(evidence.join(" ")).toContain("palavras-chave");
+  });
+
+  it("matches normalized skill aliases and caps missing required keywords", () => {
+    const score = calculateHybridScore({
+      semanticScore: 0.95,
+      candidate: createCandidate({ skills: ["JS", "Node"] }),
+      keywords: ["JavaScript", "!Kubernetes"],
+      resumeText: "Atuou com JS, Node.js e frontend.",
+    });
+
+    expect(score.keywordScore).toBe(0.5);
+    expect(score.overallScore).toBeLessThanOrEqual(0.45);
+  });
+
+  it("aggregates multiple relevant vector hits per candidate", () => {
+    expect(aggregateSemanticScore([0.9, 0.8, 0.7])).toBeGreaterThan(0.85);
+    expect(aggregateSemanticScore([0.9, 0.1, 0.1])).toBeLessThan(0.9);
   });
 
   it("falls back to hybrid ordering when reranking is unavailable", () => {

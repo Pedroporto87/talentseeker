@@ -1,3 +1,4 @@
+import { revalidateTag, unstable_cache } from "next/cache";
 import { getRepository } from "@/lib/server/repositories";
 
 export const CACHE_TAGS = {
@@ -9,50 +10,72 @@ export const CACHE_TAGS = {
 } as const;
 
 export function invalidateTags(tags: string[]) {
-  void tags;
-  // Cache de dados desativado para refletir o banco imediatamente na interface.
+  for (const tag of tags) {
+    revalidateTag(tag, { expire: 0 });
+  }
 }
 
-export async function getDashboardSnapshotCached() {
-  return getRepository().getDashboardSnapshot();
-}
+export const getDashboardSnapshotCached = unstable_cache(
+  async () => getRepository().getDashboardSnapshot(),
+  [CACHE_TAGS.dashboard],
+  { tags: [CACHE_TAGS.dashboard], revalidate: 30 },
+);
 
-export async function listJobsCached() {
-  return getRepository().listJobs();
-}
+export const listJobsCached = unstable_cache(
+  async () => getRepository().listJobs(),
+  [CACHE_TAGS.jobs],
+  { tags: [CACHE_TAGS.jobs], revalidate: 60 },
+);
 
-export async function listJobsPreviewCached(limit = 4) {
-  return getRepository().listJobs(limit);
-}
+export const listJobsPreviewCached = unstable_cache(
+  async (limit = 4) => getRepository().listJobs(limit),
+  [`${CACHE_TAGS.jobs}:preview`],
+  { tags: [CACHE_TAGS.jobs], revalidate: 60 },
+);
 
-export async function listJobOptionsCached() {
-  return getRepository().listJobOptions();
-}
+export const listJobOptionsCached = unstable_cache(
+  async () => getRepository().listJobOptions(),
+  [`${CACHE_TAGS.jobs}:options`],
+  { tags: [CACHE_TAGS.jobs], revalidate: 60 },
+);
 
-export async function getJobCached(jobId: string) {
+export const getJobCached = unstable_cache(async (jobId: string) => {
   if (!jobId) {
     return null;
   }
 
   return getRepository().getJob(jobId);
-}
+}, [`${CACHE_TAGS.jobs}:detail`], {
+  tags: [CACHE_TAGS.jobs],
+  revalidate: 60,
+});
 
-export async function listResumesCached() {
-  return getRepository().listResumes();
-}
+export const listResumesCached = unstable_cache(
+  async () => getRepository().listResumes(),
+  [CACHE_TAGS.resumes],
+  { tags: [CACHE_TAGS.resumes], revalidate: 15 },
+);
 
-export async function listMatchesCached(jobId: string | null | undefined) {
+export const listMatchesCached = unstable_cache(async (jobId: string | null | undefined) => {
   if (!jobId) {
     return [];
   }
 
   return getRepository().listMatches(jobId);
-}
+}, [CACHE_TAGS.matches], {
+  tags: [CACHE_TAGS.matches],
+  revalidate: 30,
+});
 
-export async function listPipelineHistoryCached(jobId: string | null | undefined) {
+export const listPipelineHistoryCached = unstable_cache(async (
+  jobId: string | null | undefined,
+) => {
   if (!jobId) {
     return [];
   }
 
   return getRepository().listPipelineHistory(jobId);
-}
+}, [CACHE_TAGS.pipelineHistory], {
+  tags: [CACHE_TAGS.pipelineHistory],
+  revalidate: 30,
+});

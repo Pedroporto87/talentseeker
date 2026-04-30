@@ -1,6 +1,6 @@
 "use client";
 
-import { startTransition, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 export function DeleteResumeButton({
@@ -31,9 +31,7 @@ export function DeleteResumeButton({
       return;
     }
 
-    startTransition(() => {
-      router.refresh();
-    });
+    router.refresh();
     setLoading(false);
   }
 

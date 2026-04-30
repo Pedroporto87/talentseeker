@@ -582,6 +582,56 @@ export const postgresRepository: AppRepository = {
     `;
     return rows.map(mapResumeBundle);
   },
+  async listResumesByIds(ids) {
+    if (ids.length === 0) {
+      return [];
+    }
+
+    const sql = getSqlClient();
+    const rows = await sql<ResumeBundleRow[]>`
+      SELECT
+        r.id AS resume_id,
+        r.candidate_id AS resume_candidate_id,
+        r.file_name AS resume_file_name,
+        r.mime_type AS resume_mime_type,
+        r.file_hash AS resume_file_hash,
+        r.storage_key AS resume_storage_key,
+        r.download_url AS resume_download_url,
+        r.status AS resume_status,
+        r.extracted_text AS resume_extracted_text,
+        r.ingest_error AS resume_ingest_error,
+        r.created_at AS resume_created_at,
+        r.updated_at AS resume_updated_at,
+        c.id AS candidate_id,
+        c.full_name AS candidate_full_name,
+        c.email AS candidate_email,
+        c.skills AS candidate_skills,
+        c.years_experience AS candidate_years_experience,
+        c.current_role AS candidate_current_role,
+        c.location AS candidate_location,
+        c.summary AS candidate_summary,
+        c.created_at AS candidate_created_at,
+        c.updated_at AS candidate_updated_at,
+        ij.id AS ingest_id,
+        ij.resume_id AS ingest_resume_id,
+        ij.status AS ingest_status,
+        ij.error_message AS ingest_error_message,
+        ij.created_at AS ingest_created_at,
+        ij.updated_at AS ingest_updated_at
+      FROM resumes r
+      LEFT JOIN candidate_profiles c ON c.id = r.candidate_id
+      LEFT JOIN LATERAL (
+        SELECT *
+        FROM ingest_jobs
+        WHERE resume_id = r.id
+        ORDER BY created_at DESC
+        LIMIT 1
+      ) ij ON TRUE
+      WHERE r.id = ANY(${ids}::uuid[])
+    `;
+    const byId = new Map(rows.map((row) => [row.resume_id, mapResumeBundle(row)]));
+    return ids.map((id) => byId.get(id)).filter(Boolean) as ResumeWithCandidate[];
+  },
   async getResume(id) {
     return getResumeCandidateBundle(id);
   },
@@ -653,6 +703,26 @@ export const postgresRepository: AppRepository = {
     `;
     return row ? mapResume(row) : null;
   },
+  async findIndexedResumeByFileHash(fileHash, excludeResumeId) {
+    const sql = getSqlClient();
+    const [row] = excludeResumeId
+      ? await sql<ResumeRow[]>`
+          SELECT * FROM resumes
+          WHERE file_hash = ${fileHash}
+            AND status = 'indexed'
+            AND id <> ${excludeResumeId}
+          ORDER BY created_at DESC
+          LIMIT 1
+        `
+      : await sql<ResumeRow[]>`
+          SELECT * FROM resumes
+          WHERE file_hash = ${fileHash}
+            AND status = 'indexed'
+          ORDER BY created_at DESC
+          LIMIT 1
+        `;
+    return row ? mapResume(row) : null;
+  },
   async getLatestIngestJobForResume(resumeId) {
     const sql = getSqlClient();
     const [row] = await sql<IngestJobRow[]>`
@@ -717,21 +787,33 @@ export const postgresRepository: AppRepository = {
   async replaceResumeChunks(resumeId, chunks) {
     const sql = getSqlClient();
     await sql`DELETE FROM resume_chunks WHERE resume_id = ${resumeId}`;
-    const created: ResumeChunkRecord[] = [];
-    for (const chunk of chunks) {
-      const [row] = await sql<ChunkRow[]>`
+
+    if (chunks.length === 0) {
+      return [];
+    }
+
+    const rowsToInsert = chunks.map((chunk) => ({
+      id: crypto.randomUUID(),
+      resume_id: resumeId,
+      chunk_index: chunk.chunkIndex,
+      content: chunk.content,
+      token_count: chunk.tokenCount,
+    }));
+    const rows = await sql<ChunkRow[]>`
         INSERT INTO resume_chunks (
-          id, resume_id, chunk_index, content, token_count, created_at
+          id, resume_id, chunk_index, content, token_count
         )
-        VALUES (
-          ${crypto.randomUUID()}, ${resumeId}, ${chunk.chunkIndex},
-          ${chunk.content}, ${chunk.tokenCount}, NOW()
+        SELECT id, resume_id, chunk_index, content, token_count
+        FROM jsonb_to_recordset(${sql.json(rowsToInsert)}::jsonb) AS input(
+          id uuid,
+          resume_id uuid,
+          chunk_index integer,
+          content text,
+          token_count integer
         )
         RETURNING *
       `;
-      created.push(mapChunk(row));
-    }
-    return created;
+    return rows.map(mapChunk);
   },
   async listResumeChunks(resumeId) {
     const sql = getSqlClient();

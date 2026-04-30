@@ -50,6 +50,7 @@ export const resumes = pgTable(
   (table) => ({
     fileHashIdx: index("resumes_file_hash_idx").on(table.fileHash),
     candidateIdx: index("resumes_candidate_id_idx").on(table.candidateId),
+    statusIdx: index("resumes_status_idx").on(table.status),
     createdAtIdx: index("resumes_created_at_idx").on(table.createdAt),
   }),
 );
@@ -68,6 +69,10 @@ export const resumeChunks = pgTable(
   },
   (table) => ({
     resumeIdIdx: index("resume_chunks_resume_id_idx").on(table.resumeId),
+    resumeChunkIdx: uniqueIndex("resume_chunks_resume_chunk_idx").on(
+      table.resumeId,
+      table.chunkIndex,
+    ),
   }),
 );
 

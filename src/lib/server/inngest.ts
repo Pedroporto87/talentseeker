@@ -1,4 +1,5 @@
 import { Inngest } from "inngest";
+import { CACHE_TAGS, invalidateTags } from "@/lib/server/cached-queries";
 import { ingestResume } from "@/lib/server/services/ingest-resume";
 
 export const inngest = new Inngest({
@@ -12,5 +13,6 @@ export const ingestResumeFunction = inngest.createFunction(
   },
   async ({ event }) => {
     await ingestResume(event.data.resumeId);
+    invalidateTags([CACHE_TAGS.dashboard, CACHE_TAGS.resumes]);
   },
 );

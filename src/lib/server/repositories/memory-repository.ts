@@ -163,6 +163,16 @@ export const memoryRepository: AppRepository = {
         right.resume.createdAt.localeCompare(left.resume.createdAt),
       );
   },
+  async listResumesByIds(ids) {
+    const order = new Map(ids.map((id, index) => [id, index]));
+    return getState()
+      .resumes.filter((resume) => order.has(resume.id))
+      .map((resume) => getResumeWithCandidate(resume.id)!)
+      .sort(
+        (left, right) =>
+          (order.get(left.resume.id) ?? 0) - (order.get(right.resume.id) ?? 0),
+      );
+  },
   async getResume(id) {
     return getResumeWithCandidate(id);
   },
@@ -230,6 +240,16 @@ export const memoryRepository: AppRepository = {
   },
   async findResumeByFileHash(fileHash) {
     return getState().resumes.find((resume) => resume.fileHash === fileHash) ?? null;
+  },
+  async findIndexedResumeByFileHash(fileHash, excludeResumeId) {
+    return (
+      getState().resumes.find(
+        (resume) =>
+          resume.fileHash === fileHash &&
+          resume.status === "indexed" &&
+          resume.id !== excludeResumeId,
+      ) ?? null
+    );
   },
   async getLatestIngestJobForResume(resumeId) {
     return (

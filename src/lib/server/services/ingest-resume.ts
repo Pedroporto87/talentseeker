@@ -3,10 +3,12 @@ import {
   createEmbedding,
   createQdrantDocument,
 } from "@/lib/server/adapters/embeddings";
-import { extractCandidateProfile } from "@/lib/server/adapters/llm";
+import {
+  enhanceCandidateProfileWithGroq,
+  extractCandidateProfileByHeuristics,
+} from "@/lib/server/adapters/llm";
 import {
   readStoredResume,
-  removeStoredResume,
 } from "@/lib/server/adapters/storage";
 import {
   removeResumeVectors,
@@ -15,9 +17,76 @@ import {
 import { extractTextFromDocument } from "@/lib/server/document-parser";
 import { isQdrantCloudInferenceConfigured } from "@/lib/server/env";
 import { getRepository } from "@/lib/server/repositories";
+import type { ExtractedCandidateProfile } from "@/lib/types";
 
-export async function ingestResume(resumeId: string) {
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  concurrency: number,
+  mapper: (item: T) => Promise<R>,
+) {
+  const results: R[] = [];
+  let nextIndex = 0;
+
+  async function worker() {
+    while (nextIndex < items.length) {
+      const currentIndex = nextIndex;
+      nextIndex += 1;
+      results[currentIndex] = await mapper(items[currentIndex]);
+    }
+  }
+
+  await Promise.all(
+    Array.from({ length: Math.min(concurrency, items.length) }, () => worker()),
+  );
+
+  return results;
+}
+
+function createIngestTimer(resumeId: string) {
+  const startedAt = performance.now();
+  let previousMark = startedAt;
+
+  return (step: string, extra: Record<string, unknown> = {}) => {
+    const now = performance.now();
+    console.log("[ingest-resume] step", {
+      resumeId,
+      step,
+      stepMs: Math.round(now - previousMark),
+      totalMs: Math.round(now - startedAt),
+      ...extra,
+    });
+    previousMark = now;
+  };
+}
+
+function profilesAreDifferent(
+  left: ExtractedCandidateProfile,
+  right: ExtractedCandidateProfile,
+) {
+  return JSON.stringify(left) !== JSON.stringify(right);
+}
+
+function updateIngestJobInBackground(
+  ingestJobId: string,
+  patch: Parameters<ReturnType<typeof getRepository>["updateIngestJob"]>[1],
+) {
   const repository = getRepository();
+  void repository.updateIngestJob(ingestJobId, patch).catch((error) => {
+    console.error("[ingest-resume] ingest-job-update-failed", {
+      ingestJobId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  });
+}
+
+export async function ingestResume(
+  resumeId: string,
+  options: {
+    buffer?: Buffer;
+  } = {},
+) {
+  const repository = getRepository();
+  const mark = createIngestTimer(resumeId);
   const bundle = await repository.getResume(resumeId);
 
   if (!bundle) {
@@ -34,43 +103,26 @@ export async function ingestResume(resumeId: string) {
     status: "parsing",
     ingestError: null,
   });
-  await repository.updateIngestJob(ingestJob.id, {
+  updateIngestJobInBackground(ingestJob.id, {
     status: "parsing",
     errorMessage: null,
   });
-
-  const duplicate = (await repository.listResumes()).find(
-    (item) =>
-      item.resume.fileHash === bundle.resume.fileHash &&
-      item.resume.id !== resumeId &&
-      item.resume.status === "indexed",
-  )?.resume;
-
-  if (duplicate) {
-    const message =
-      "Este curriculo ja foi cadastrado anteriormente. Remova a versao existente antes de reenviar o mesmo arquivo.";
-    await repository.updateResume(resumeId, {
-      status: "failed",
-      ingestError: message,
-    });
-    await repository.updateIngestJob(ingestJob.id, {
-      status: "failed",
-      errorMessage: message,
-    });
-    await removeStoredResume(bundle.resume.storageKey, bundle.resume.downloadUrl);
-    return;
-  }
+  mark("status-updated");
 
   try {
-    const buffer = await readStoredResume(
-      bundle.resume.storageKey,
-      bundle.resume.downloadUrl,
-    );
+    const buffer =
+      options.buffer ??
+      (await readStoredResume(bundle.resume.storageKey, bundle.resume.downloadUrl));
+    mark("file-read", {
+      bytes: buffer.length,
+      source: options.buffer ? "upload-buffer" : "storage",
+    });
     const extractedText = await extractTextFromDocument({
       buffer,
       mimeType: bundle.resume.mimeType,
       fileName: bundle.resume.fileName,
     });
+    mark("text-extracted", { characters: extractedText.length });
 
     if (!extractedText || extractedText.length < 80) {
       await repository.updateResume(resumeId, {
@@ -84,10 +136,12 @@ export async function ingestResume(resumeId: string) {
         errorMessage:
           "Currículo exige revisão manual por falta de texto utilizável.",
       });
+      mark("needs-review");
       return;
     }
 
-    const extractedProfile = await extractCandidateProfile(extractedText);
+    const extractedProfile = extractCandidateProfileByHeuristics(extractedText);
+    mark("profile-heuristic", { skills: extractedProfile.skills.length });
     const existingCandidate = await repository.findCandidateByIdentity({
       fullName: extractedProfile.fullName,
       email: extractedProfile.email,
@@ -97,23 +151,22 @@ export async function ingestResume(resumeId: string) {
       existingCandidate?.id,
     );
 
-    await repository.updateResume(resumeId, {
-      candidateId: candidate.id,
-      extractedText,
-      status: "parsing",
-      ingestError: null,
-    });
+    mark("candidate-saved", { candidateId: candidate.id });
 
     const chunks = chunkText(extractedText, {
-      maxTokens: 500,
-      overlapTokens: 100,
+      maxTokens: 700,
+      overlapTokens: 80,
     });
     const storedChunks = await repository.replaceResumeChunks(resumeId, chunks);
-    await removeResumeVectors(resumeId);
+    mark("chunks-saved", { chunks: storedChunks.length });
 
-    const embeddedChunks = [];
-    for (const chunk of storedChunks) {
-      embeddedChunks.push({
+    if (bundle.resume.status === "indexed") {
+      await removeResumeVectors(resumeId);
+      mark("old-vectors-removed");
+    }
+
+    const embeddedChunks = await mapWithConcurrency(storedChunks, 4, async (chunk) => {
+      return {
         id: chunk.id,
         vector: isQdrantCloudInferenceConfigured()
           ? createQdrantDocument(chunk.content)
@@ -124,20 +177,42 @@ export async function ingestResume(resumeId: string) {
           content: chunk.content,
           chunkIndex: chunk.chunkIndex,
         },
-      });
-    }
+      };
+    });
+    mark("vectors-prepared", { chunks: embeddedChunks.length });
 
     await upsertResumeVectors(embeddedChunks);
+    mark("vectors-upserted", { chunks: embeddedChunks.length });
     await repository.updateResume(resumeId, {
       status: "indexed",
       extractedText,
       candidateId: candidate.id,
       ingestError: null,
     });
-    await repository.updateIngestJob(ingestJob.id, {
+    updateIngestJobInBackground(ingestJob.id, {
       status: "indexed",
       errorMessage: null,
     });
+    mark("indexed");
+
+    void enhanceCandidateProfileWithGroq(extractedText, extractedProfile)
+      .then(async (enhancedProfile) => {
+        if (!profilesAreDifferent(extractedProfile, enhancedProfile)) {
+          return;
+        }
+
+        await repository.upsertCandidateProfile(enhancedProfile, candidate.id);
+        console.log("[ingest-resume] profile-enhanced", {
+          resumeId,
+          candidateId: candidate.id,
+        });
+      })
+      .catch((error) => {
+        console.error("[ingest-resume] profile-enhance-failed", {
+          resumeId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Falha inesperada na ingestão.";

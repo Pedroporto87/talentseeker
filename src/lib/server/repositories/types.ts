@@ -48,6 +48,7 @@ export type AppRepository = {
   updateJob(id: string, input: JobInput): Promise<JobRecord | null>;
   deleteJob(id: string): Promise<void>;
   listResumes(): Promise<ResumeWithCandidate[]>;
+  listResumesByIds(ids: string[]): Promise<ResumeWithCandidate[]>;
   getResume(id: string): Promise<ResumeWithCandidate | null>;
   createResume(input: {
     fileName: string;
@@ -67,6 +68,10 @@ export type AppRepository = {
     >,
   ): Promise<ResumeRecord | null>;
   findResumeByFileHash(fileHash: string): Promise<ResumeRecord | null>;
+  findIndexedResumeByFileHash(
+    fileHash: string,
+    excludeResumeId?: string,
+  ): Promise<ResumeRecord | null>;
   getLatestIngestJobForResume(resumeId: string): Promise<IngestJobRecord | null>;
   updateIngestJob(
     id: string,

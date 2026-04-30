@@ -3,7 +3,7 @@ import { ACCEPTED_RESUME_TYPES } from "@/lib/constants";
 import { CACHE_TAGS, invalidateTags } from "@/lib/server/cached-queries";
 import { createFileHash, storeResumeFile } from "@/lib/server/adapters/storage";
 import { getRepository } from "@/lib/server/repositories";
-import { ingestResume } from "@/lib/server/services/ingest-resume";
+import { enqueueResumeIngest } from "@/lib/server/services/enqueue-resume-ingest";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -58,6 +58,19 @@ export async function POST(request: Request) {
 
     const contentType = getResumeContentType(file);
     const fileHash = createFileHash(buffer);
+    const existing = await getRepository().findIndexedResumeByFileHash(fileHash);
+
+    if (existing?.status === "indexed") {
+      return NextResponse.json(
+        {
+          error:
+            "Este curriculo ja foi cadastrado anteriormente. Remova a versao existente antes de reenviar o mesmo arquivo.",
+          resume: existing,
+        },
+        { status: 409 },
+      );
+    }
+
     const storedFile = await storeResumeFile({
       buffer,
       fileName: file.name,
@@ -78,17 +91,18 @@ export async function POST(request: Request) {
       fileName: file.name,
     });
 
-    await ingestResume(created.resume.id);
-
     invalidateTags([CACHE_TAGS.dashboard, CACHE_TAGS.resumes]);
-    const refreshed = await repository.getResume(created.resume.id);
-
-    console.log("[api/resumes/upload] completed", {
-      resumeId: created.resume.id,
-      status: refreshed?.resume.status ?? created.resume.status,
+    enqueueResumeIngest(created.resume.id, {
+      hostname: new URL(request.url).hostname,
+      buffer,
     });
 
-    return NextResponse.json(refreshed ?? created, { status: 201 });
+    console.log("[api/resumes/upload] queued", {
+      resumeId: created.resume.id,
+      status: created.resume.status,
+    });
+
+    return NextResponse.json(created, { status: 201 });
   } catch (error) {
     const repository = getRepository();
     const refreshed = createdResumeId

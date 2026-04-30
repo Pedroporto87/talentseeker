@@ -62,7 +62,9 @@ function getGroqClient() {
   return globalThis.__resumeGroqClient;
 }
 
-function extractByHeuristics(text: string): ExtractedCandidateProfile {
+export function extractCandidateProfileByHeuristics(
+  text: string,
+): ExtractedCandidateProfile {
   const lines = text
     .split(/\r?\n/)
     .map((line) => line.trim())
@@ -135,8 +137,15 @@ function extractArrayBlock<T>(content: string): T[] | null {
 }
 
 export async function extractCandidateProfile(text: string) {
-  const fallback = extractByHeuristics(text);
+  const fallback = extractCandidateProfileByHeuristics(text);
 
+  return enhanceCandidateProfileWithGroq(text, fallback);
+}
+
+export async function enhanceCandidateProfileWithGroq(
+  text: string,
+  fallback: ExtractedCandidateProfile,
+) {
   if (!isGroqConfigured()) {
     return fallback;
   }

@@ -1,4 +1,8 @@
-import { buildEvidence, calculateHybridScore } from "@/lib/matching";
+import {
+  aggregateSemanticScore,
+  buildEvidence,
+  calculateHybridScore,
+} from "@/lib/matching";
 import {
   createEmbedding,
   createQdrantDocument,
@@ -154,13 +158,13 @@ export async function runJobMatch(jobId: string): Promise<MatchCandidateView[]> 
   let rankedCandidates: RankingCandidate[] = [];
 
   try {
-    let hits = await searchResumeVectors(searchQuery, 20);
+    let hits = await searchResumeVectors(searchQuery, 60);
 
     if (hits.length === 0 && isQdrantConfigured()) {
       const vectorCount = await getResumeVectorCount();
       if (vectorCount === 0) {
         await ensureResumeVectorsIndexed();
-        hits = await searchResumeVectors(searchQuery, 20);
+        hits = await searchResumeVectors(searchQuery, 60);
       }
     }
 
@@ -169,35 +173,53 @@ export async function runJobMatch(jobId: string): Promise<MatchCandidateView[]> 
       hits: hits.length,
     });
 
-    const grouped = new Map<string, { resumeId: string; semanticScore: number }>();
+    const grouped = new Map<
+      string,
+      { resumeId: string; scores: number[]; contents: string[] }
+    >();
 
     for (const hit of hits) {
       const current = grouped.get(hit.payload.resumeId);
-      if (!current || hit.score > current.semanticScore) {
+      if (current) {
+        current.scores.push(hit.score);
+        current.contents.push(hit.payload.content);
+      } else {
         grouped.set(hit.payload.resumeId, {
           resumeId: hit.payload.resumeId,
-          semanticScore: hit.score,
+          scores: [hit.score],
+          contents: [hit.payload.content],
         });
       }
     }
 
-    for (const item of grouped.values()) {
-      const bundle = await repository.getResume(item.resumeId);
+    const groupedItems = [...grouped.values()];
+    const bundles = await repository.listResumesByIds(
+      groupedItems.map((item) => item.resumeId),
+    );
+    const bundlesByResumeId = new Map(
+      bundles.map((bundle) => [bundle.resume.id, bundle]),
+    );
+
+    for (const item of groupedItems) {
+      const bundle = bundlesByResumeId.get(item.resumeId);
       if (!bundle?.candidate || bundle.resume.status !== "indexed") {
         continue;
       }
 
+      const semanticScore = aggregateSemanticScore(item.scores);
+      const resumeText = [
+        bundle.resume.extractedText,
+        item.contents.slice(0, 3).join(" "),
+        bundle.candidate.summary,
+        bundle.candidate.skills.join(" "),
+      ]
+        .filter(Boolean)
+        .join(" ");
       const hybridScore = calculateHybridScore({
-        semanticScore: item.semanticScore,
+        semanticScore,
         candidate: bundle.candidate,
         keywords: job.keywords,
-        resumeText: [
-          bundle.resume.extractedText,
-          bundle.candidate.summary,
-          bundle.candidate.skills.join(" "),
-        ]
-          .filter(Boolean)
-          .join(" "),
+        resumeText,
       });
 
       rankedCandidates.push({

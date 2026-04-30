@@ -1,6 +1,6 @@
 "use client";
 
-import { startTransition, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 type ActionState = "attempts" | "all" | null;
@@ -39,9 +39,7 @@ export function ResumeLibraryActions() {
         : "Biblioteca limpa com sucesso.",
     );
 
-    startTransition(() => {
-      router.refresh();
-    });
+    router.refresh();
     setLoading(null);
   }
 

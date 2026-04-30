@@ -1,6 +1,6 @@
 "use client";
 
-import { startTransition, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 export function DeleteJobButton({
@@ -41,13 +41,12 @@ export function DeleteJobButton({
       return;
     }
 
-    startTransition(() => {
-      if (redirectTo) {
-        router.push(redirectTo);
-      } else {
-        router.refresh();
-      }
-    });
+    if (redirectTo) {
+      router.replace(redirectTo);
+      window.setTimeout(() => router.refresh(), 0);
+    } else {
+      router.refresh();
+    }
     setLoading(false);
   }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { startTransition, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 export function CreateJobForm() {
@@ -49,14 +49,7 @@ export function CreateJobForm() {
         : "Vaga criada com sucesso.",
     );
 
-    startTransition(() => {
-      if (created?.id) {
-        router.push(`/vagas/${created.id}`);
-        return;
-      }
-
-      router.refresh();
-    });
+    router.refresh();
     setLoading(false);
   }
 

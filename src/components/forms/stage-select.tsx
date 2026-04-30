@@ -56,9 +56,7 @@ export function StageSelect(props: {
       return;
     }
 
-    startTransition(() => {
-      router.refresh();
-    });
+    router.refresh();
     setLoading(false);
   }
 

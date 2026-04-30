@@ -1,4 +1,5 @@
 import { DeleteResumeButton } from "@/components/forms/delete-resume-button";
+import { AutoRefresh } from "@/components/auto-refresh";
 import { ResumeLibraryActions } from "@/components/forms/resume-library-actions";
 import { UploadResumeForm } from "@/components/forms/upload-resume-form";
 import { StatusBadge } from "@/components/status-badge";
@@ -9,9 +10,13 @@ export const dynamic = "force-dynamic";
 
 export default async function ResumesPage() {
   const resumes = await listResumesCached();
+  const hasPendingResume = resumes.some(
+    ({ resume }) => resume.status === "uploaded" || resume.status === "parsing",
+  );
 
   return (
     <div className="grid gap-6 xl:grid-cols-[0.8fr_1.2fr]">
+      <AutoRefresh enabled={hasPendingResume} />
       <Card>
         <p className="text-sm uppercase tracking-[0.25em] text-[#163f35]/60">
           Ingestao

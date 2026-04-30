@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS resumes (
 
 CREATE INDEX IF NOT EXISTS resumes_file_hash_idx ON resumes (file_hash);
 CREATE INDEX IF NOT EXISTS resumes_candidate_id_idx ON resumes (candidate_id);
+CREATE INDEX IF NOT EXISTS resumes_status_idx ON resumes (status);
 CREATE INDEX IF NOT EXISTS resumes_created_at_idx ON resumes (created_at);
 
 CREATE TABLE IF NOT EXISTS resume_chunks (
@@ -44,6 +45,8 @@ CREATE TABLE IF NOT EXISTS resume_chunks (
 );
 
 CREATE INDEX IF NOT EXISTS resume_chunks_resume_id_idx ON resume_chunks (resume_id);
+CREATE UNIQUE INDEX IF NOT EXISTS resume_chunks_resume_chunk_idx
+  ON resume_chunks (resume_id, chunk_index);
 
 CREATE TABLE IF NOT EXISTS jobs (
   id UUID PRIMARY KEY,

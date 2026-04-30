@@ -13,7 +13,13 @@ export function normalizeText(input: string) {
 }
 
 export function normalizeKeyword(input: string) {
-  return normalizeText(input).toLowerCase();
+  return normalizeText(input)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9+#.]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 export function clamp(value: number, min = 0, max = 1) {

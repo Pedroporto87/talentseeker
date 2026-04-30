@@ -24,4 +24,22 @@ describe("chunkText", () => {
   it("returns no chunks for empty input", () => {
     expect(chunkText("   ")).toEqual([]);
   });
+
+  it("keeps resume sections together when headings are present", () => {
+    const chunks = chunkText(
+      [
+        "Resumo",
+        "Profissional com foco em produto digital e descoberta continua.",
+        "Experiencia",
+        "Atuou com React, Next.js, TypeScript, testes e design system em plataformas SaaS.",
+        "Formacao",
+        "Bacharelado em Sistemas de Informacao com projetos de dados aplicados.",
+      ].join("\n"),
+      { maxTokens: 40, overlapTokens: 8 },
+    );
+
+    expect(chunks.length).toBeGreaterThanOrEqual(2);
+    expect(chunks.some((chunk) => chunk.content.includes("Experiencia"))).toBe(true);
+    expect(chunks.some((chunk) => chunk.content.includes("Formacao"))).toBe(true);
+  });
 });

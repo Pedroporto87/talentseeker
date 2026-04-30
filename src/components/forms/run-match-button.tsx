@@ -1,6 +1,6 @@
 "use client";
 
-import { startTransition, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 export function RunMatchButton({ jobId }: { jobId: string }) {
@@ -24,9 +24,7 @@ export function RunMatchButton({ jobId }: { jobId: string }) {
       return;
     }
 
-    startTransition(() => {
-      router.refresh();
-    });
+    router.refresh();
     setLoading(false);
   }
 
